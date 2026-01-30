@@ -5,6 +5,7 @@ vi.mock('./http', () => {
     if (url.includes('omdbapi'))
       return {
         imdbRating: '8.4',
+        imdbVotes: '1,234,567',
         Ratings: [{ Source: 'Rotten Tomatoes', Value: '86%' }],
         Metascore: '73',
       };
@@ -17,11 +18,11 @@ vi.mock('./http', () => {
     throw new Error('unhandled url ' + url);
   });
   const fetchText = vi.fn(async (url: string) => {
-    if (url.includes('letterboxd')) return '"ratingValue":4.1';
-    if (url.includes('metacritic')) return '"ratingValue": 73';
+    if (url.includes('letterboxd')) return '"ratingValue":4.1,"ratingCount":50000';
+    if (url.includes('metacritic')) return '"ratingValue": 73,"ratingCount":42';
     // Mubi ratings page (uses numeric ID from Wikidata)
     if (url.includes('mubi.com/en/films/99999/ratings'))
-      return '<meta name="description" content="Average rating: 8.5/10 out of 12345 ratings">';
+      return '<meta name="description" content="Average rating: 8.5/10 out of 12,345 ratings">';
     // Douban search pages and Google fallback - return empty
     if (url.includes('douban.com') || url.includes('google.com')) return '';
     return '';
@@ -40,7 +41,7 @@ const baseCtx = {
 describe('runFetchers', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('returns normalized scores and composite', async () => {
+  it('returns normalized scores and overall', async () => {
     const res = await runFetchers(baseCtx);
     expect(res.sources).toHaveLength(6);
     const imdb = res.sources.find((s) => s.source === 'imdb');
@@ -54,6 +55,9 @@ describe('runFetchers', () => {
     const douban = res.sources.find((s) => s.source === 'douban');
     expect(douban?.normalized).toBeCloseTo(91); // 9.1/10 * 100
     expect(res.overall).not.toBeNull();
+    expect(res.overall!.score).toBeGreaterThan(0);
+    expect(res.overall!.confidence).toBeGreaterThan(0);
+    expect(res.overall!.disagreement).toBeGreaterThanOrEqual(0);
     expect(res.missingSources?.length).toBe(0);
   });
 

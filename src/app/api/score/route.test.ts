@@ -14,8 +14,8 @@ vi.mock('@/lib/wikidata', () => ({
 vi.mock('@/lib/fetchers', () => ({
   runFetchers: vi.fn(async ({ movie }) => ({
     movie,
-    sources: [{ source: 'imdb', label: 'IMDb', normalized: 84 }],
-    overall: { score: 84, confidence: 1, disagreement: 0 },
+    sources: [{ source: 'imdb', label: 'IMDb', normalized: 84, count: 100000 }],
+    overall: { score: 84, confidence: 0.9, disagreement: 0 },
   })),
 }));
 
