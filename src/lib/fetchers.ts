@@ -40,6 +40,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
       label: 'IMDb',
       normalized: null,
       raw: { value: ratings.imdb, scale: '0-10' },
+      count: ratings.imdbVotes,
       url: `https://www.imdb.com/title/${ctx.movie.imdbId}`,
     });
     return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic } };
