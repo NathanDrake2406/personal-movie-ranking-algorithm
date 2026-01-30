@@ -129,6 +129,9 @@ async function fetchRottenTomatoes(
     let avgTop: number | null = null;
 
     // If percentage missing, fall back to average rating scraped from HTML (0-10 -> convert)
+    let allCriticsCount: number | null = null;
+    let topCriticsCount: number | null = null;
+
     if (value == null) {
       const html = await fetchText(`https://www.rottentomatoes.com/m/${slug}`, {
         headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
@@ -138,6 +141,12 @@ async function fetchRottenTomatoes(
       if (matchAll?.[1]) avgAll = Number(matchAll[1]) * 10;
       if (matchTop?.[1]) avgTop = Number(matchTop[1]) * 10;
       if (avgAll != null) value = avgAll;
+
+      // Extract review counts
+      const matchAllCount = html.match(/"criticsAll"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      const matchTopCount = html.match(/"criticsTop"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
+      topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
     }
 
     const scores: SourceScore[] = [];
@@ -148,6 +157,7 @@ async function fetchRottenTomatoes(
         label: 'RT Tomatometer',
         normalized: null,
         raw: { value, scale: '0-100' },
+        count: allCriticsCount,
         url: `https://www.rottentomatoes.com/m/${slug}`,
       }),
     );
@@ -159,6 +169,7 @@ async function fetchRottenTomatoes(
           label: 'RT Critics Avg (All)',
           normalized: null,
           raw: { value: avgAll, scale: '0-100' },
+          count: allCriticsCount,
           url: `https://www.rottentomatoes.com/m/${slug}`,
         }),
       );
@@ -171,6 +182,7 @@ async function fetchRottenTomatoes(
           label: 'RT Critics Avg (Top)',
           normalized: null,
           raw: { value: avgTop, scale: '0-100' },
+          count: topCriticsCount,
           url: `https://www.rottentomatoes.com/m/${slug}`,
         }),
       );
@@ -193,6 +205,14 @@ async function fetchRottenTomatoes(
       const avgTop = matchTop?.[1] ? Number(matchTop[1]) * 10 : null;
       const audienceAvg = matchAudience?.[1] ? Number(matchAudience[1]) : null;
 
+      // Extract review counts (numReviews may have "+" suffix which regex strips)
+      const matchAudienceCount = html.match(/"audienceAll"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      const matchAllCount = html.match(/"criticsAll"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      const matchTopCount = html.match(/"criticsTop"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      const audienceCount = matchAudienceCount?.[1] ? parseInt(matchAudienceCount[1], 10) : null;
+      const allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
+      const topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
+
       if (tomatometer != null || avgAll != null || avgTop != null || audienceAvg != null) {
         const scores: SourceScore[] = [];
         // Always include Tomatometer first if available
@@ -203,6 +223,7 @@ async function fetchRottenTomatoes(
               label: 'RT Tomatometer',
               normalized: null,
               raw: { value: tomatometer, scale: '0-100' },
+              count: allCriticsCount,
               url: `https://www.rottentomatoes.com/m/${slug}`,
             }),
           );
@@ -214,6 +235,7 @@ async function fetchRottenTomatoes(
               label: 'RT Audience',
               normalized: null,
               raw: { value: audienceAvg, scale: '0-5' },
+              count: audienceCount,
               url: `https://www.rottentomatoes.com/m/${slug}`,
             }),
           );
@@ -225,6 +247,7 @@ async function fetchRottenTomatoes(
               label: 'RT Critics Avg (All)',
               normalized: null,
               raw: { value: avgAll, scale: '0-100' },
+              count: allCriticsCount,
               url: `https://www.rottentomatoes.com/m/${slug}`,
             }),
           );
@@ -236,6 +259,7 @@ async function fetchRottenTomatoes(
               label: 'RT Critics Avg (Top)',
               normalized: null,
               raw: { value: avgTop, scale: '0-100' },
+              count: topCriticsCount,
               url: `https://www.rottentomatoes.com/m/${slug}`,
             }),
           );
