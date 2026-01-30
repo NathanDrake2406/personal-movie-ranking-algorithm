@@ -529,24 +529,32 @@ type DoubanAbstractResponse = {
   subject?: {
     rate?: string; // e.g. "9.4"
     title?: string;
+    votes?: string; // e.g., "123456"
   };
 };
 
 // Fetch rating from Douban's subject_abstract JSON API (avoids JS challenge on HTML pages)
-async function fetchDoubanRating(doubanId: string): Promise<number | null> {
+async function fetchDoubanRating(doubanId: string): Promise<{ rating: number | null; count: number | null }> {
   const data = await fetchJson<DoubanAbstractResponse>(
     `https://movie.douban.com/j/subject_abstract?subject_id=${doubanId}`,
     { headers: { 'user-agent': BROWSER_UA } },
     10000,
   );
 
+  let rating: number | null = null;
+  let count: number | null = null;
+
   if (data.subject?.rate) {
-    const rating = parseFloat(data.subject.rate);
-    if (!isNaN(rating)) {
-      return rating; // Returns 0-10 scale
-    }
+    rating = parseFloat(data.subject.rate);
+    if (isNaN(rating)) rating = null;
   }
-  return null;
+
+  if (data.subject?.votes) {
+    count = parseInt(data.subject.votes, 10);
+    if (isNaN(count)) count = null;
+  }
+
+  return { rating, count };
 }
 
 async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
@@ -564,7 +572,7 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
     }
 
     // Fetch rating from JSON API (HTML pages have JS challenge)
-    const rating = await fetchDoubanRating(doubanId);
+    const { rating, count } = await fetchDoubanRating(doubanId);
     const url = `https://movie.douban.com/subject/${doubanId}/`;
 
     if (rating == null) {
@@ -582,6 +590,7 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
       label: 'Douban',
       normalized: null,
       raw: { value: rating, scale: '0-10' },
+      count,
       url,
       // Include which method found the ID (useful for debugging)
       fromFallback: method !== 'wikidata',
