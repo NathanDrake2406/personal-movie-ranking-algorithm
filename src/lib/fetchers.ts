@@ -534,11 +534,12 @@ type DoubanAbstractResponse = {
   subject?: {
     rate?: string; // e.g. "9.4"
     title?: string;
-    votes?: string; // e.g., "123456"
   };
 };
 
-// Fetch rating from Douban's subject_abstract JSON API (avoids JS challenge on HTML pages)
+// Fetch rating from Douban's subject_abstract JSON API
+// Note: Vote count is not available via API, and HTML pages are protected (302 redirect).
+// Douban will use default 0.7 reliability.
 async function fetchDoubanRating(doubanId: string): Promise<{ rating: number | null; count: number | null }> {
   const data = await fetchJson<DoubanAbstractResponse>(
     `https://movie.douban.com/j/subject_abstract?subject_id=${doubanId}`,
@@ -547,19 +548,14 @@ async function fetchDoubanRating(doubanId: string): Promise<{ rating: number | n
   );
 
   let rating: number | null = null;
-  let count: number | null = null;
 
   if (data.subject?.rate) {
     rating = parseFloat(data.subject.rate);
     if (isNaN(rating)) rating = null;
   }
 
-  if (data.subject?.votes) {
-    count = parseInt(data.subject.votes, 10);
-    if (isNaN(count)) count = null;
-  }
-
-  return { rating, count };
+  // Vote count not available - HTML pages are blocked (anti-bot protection)
+  return { rating, count: null };
 }
 
 async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
