@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Movies Ranking
 
-## Getting Started
+A Next.js app that aggregates movie scores from multiple sources (IMDb, Rotten Tomatoes, Metacritic, Letterboxd, Mubi, Douban), normalizes them to 0–100, and computes a weighted composite score.
 
-First, run the development server:
+**Live:** https://movies-ranking-rho.vercel.app
 
+## Setup
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Add API keys in `.env.local`:
+```env
+OMDB_API_KEY=your_omdb_key    # Optional if rotation keys configured
+TMDB_API_KEY=your_tmdb_key    # Recommended for better movie resolution
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run dev server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How it works
+- **Title resolution:** TMDB search → canonical IMDb ID + poster/year. Falls back to OMDb with key rotation.
+- **Wikidata lookup:** Fetches slugs for RT, Metacritic, Letterboxd, Mubi, Douban by IMDb ID.
+- **Sources:**
+  - IMDb: OMDB API with key rotation → direct HTML scrape fallback
+  - Rotten Tomatoes: Verified audience preferred, falls back to all audience
+  - Metacritic, Letterboxd, Mubi, Douban: HTML scrape with Wikidata slugs
+- **Normalization:** Each score mapped to 0–100 in `src/lib/normalize.ts`
+- **Scoring:** Weighted average with reliability adjustment based on vote count, disagreement penalty
+- **API:** POST `/api/score` with `{ title }` → movie metadata, per-source scores, composite
+- **Caching:** In-memory 5-minute cache per IMDb ID
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Testing
+- Run the suite:
+```bash
+npm test
+```
+- Coverage report (HTML + text):
+```bash
+npm test -- --coverage
+```
+- Lint:
+```bash
+npm run lint
+```
