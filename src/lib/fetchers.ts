@@ -335,13 +335,16 @@ async function fetchLetterboxd(ctx: FetcherContext): Promise<SourceScore> {
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
     });
     // Extract rating from JSON-LD structured data
-    const match = html.match(/"ratingValue"\s*:\s*([\d.]+)/);
-    const value = match?.[1] ? Number(match[1]) : null;
+    const valueMatch = html.match(/"ratingValue"\s*:\s*([\d.]+)/);
+    const countMatch = html.match(/"ratingCount"\s*:\s*(\d+)/);
+    const value = valueMatch?.[1] ? Number(valueMatch[1]) : null;
+    const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : null;
     return normalizeScore({
       source: 'letterboxd',
       label: 'Letterboxd',
       normalized: null,
       raw: { value, scale: '0-5' },
+      count,
       url: `https://letterboxd.com/film/${slug}/`,
     });
   } catch (err) {
