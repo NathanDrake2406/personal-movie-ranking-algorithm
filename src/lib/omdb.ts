@@ -24,6 +24,36 @@ export async function fetchOmdbById(imdbId: string, apiKey: string) {
   );
 }
 
+// Try multiple API keys until one succeeds
+export async function fetchOmdbByIdWithRotation(imdbId: string, apiKeys: string[]) {
+  for (const key of apiKeys) {
+    try {
+      const data = await fetchOmdbById(imdbId, key);
+      // OMDB returns Response: "False" on error, check for valid data
+      if (data.imdbRating || data.Title) {
+        return data;
+      }
+    } catch {
+      // Try next key
+    }
+  }
+  throw new Error('All OMDB keys exhausted');
+}
+
+export async function fetchOmdbByTitleWithRotation(title: string, apiKeys: string[]) {
+  for (const key of apiKeys) {
+    try {
+      const results = await fetchOmdbByTitle(title, key);
+      if (results.length > 0) {
+        return results;
+      }
+    } catch {
+      // Try next key
+    }
+  }
+  return [];
+}
+
 export function parseOmdbRatings(movie: OmdbMovie) {
   let rottenTomatoes: number | null = null;
   if (movie.Ratings) {

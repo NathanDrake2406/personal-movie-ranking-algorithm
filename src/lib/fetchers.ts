@@ -4,7 +4,7 @@ import { computeOverallScore } from './scoring';
 import type { MovieInfo, ScorePayload, SourceScore, WikidataIds } from './types';
 import { MemoryCache } from './cache';
 import { getApiKeys } from './config';
-import { fetchOmdbById, parseOmdbRatings } from './omdb';
+import { fetchOmdbByIdWithRotation, parseOmdbRatings } from './omdb';
 
 type FetcherContext = {
   movie: MovieInfo;
@@ -26,31 +26,64 @@ const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
 async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fallback: OmdbFallback }> {
-  const { omdbKey } = getApiKeys(ctx.env);
-  if (!omdbKey) {
-    return {
-      score: { source: 'imdb', label: 'IMDb', normalized: null, error: 'Missing OMDB key' },
-      fallback: {},
-    };
+  const { omdbKeys } = getApiKeys(ctx.env);
+  const imdbUrl = `https://www.imdb.com/title/${ctx.movie.imdbId}`;
+
+  // Layer 1: Try OMDB API with key rotation
+  if (omdbKeys.length > 0) {
+    try {
+      const data = await fetchOmdbByIdWithRotation(ctx.movie.imdbId, omdbKeys);
+      const ratings = parseOmdbRatings(data);
+      if (ratings.imdb != null && !isNaN(ratings.imdb)) {
+        const score = normalizeScore({
+          source: 'imdb',
+          label: 'IMDb',
+          normalized: null,
+          raw: { value: ratings.imdb, scale: '0-10' },
+          count: ratings.imdbVotes,
+          url: imdbUrl,
+        });
+        return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic } };
+      }
+    } catch {
+      // All OMDB keys failed, fall through to scrape
+    }
   }
+
+  // Layer 2: Direct IMDb scrape fallback
   try {
-    const data = await fetchOmdbById(ctx.movie.imdbId, omdbKey);
-    const ratings = parseOmdbRatings(data);
-    const score = normalizeScore({
-      source: 'imdb',
-      label: 'IMDb',
-      normalized: null,
-      raw: { value: ratings.imdb, scale: '0-10' },
-      count: ratings.imdbVotes,
-      url: `https://www.imdb.com/title/${ctx.movie.imdbId}`,
+    const html = await fetchText(imdbUrl, {
+      headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en-US,en;q=0.9' },
     });
-    return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic } };
-  } catch (err) {
-    return {
-      score: { source: 'imdb', label: 'IMDb', normalized: null, error: (err as Error).message },
-      fallback: {},
-    };
+    // Extract from JSON-LD aggregateRating (fields can appear in any order)
+    const ratingBlock = html.match(/"aggregateRating":\{[^}]+\}/);
+    if (ratingBlock) {
+      const valueMatch = ratingBlock[0].match(/"ratingValue":([\d.]+)/);
+      const countMatch = ratingBlock[0].match(/"ratingCount":(\d+)/);
+      const value = valueMatch ? parseFloat(valueMatch[1]) : NaN;
+      const count = countMatch ? parseInt(countMatch[1], 10) : null;
+      if (!isNaN(value)) {
+        return {
+          score: normalizeScore({
+            source: 'imdb',
+            label: 'IMDb',
+            normalized: null,
+            raw: { value, scale: '0-10' },
+            count,
+            url: imdbUrl,
+          }),
+          fallback: {},
+        };
+      }
+    }
+  } catch {
+    // Scrape also failed
   }
+
+  return {
+    score: { source: 'imdb', label: 'IMDb', normalized: null, url: imdbUrl, error: 'No rating data available' },
+    fallback: {},
+  };
 }
 
 // Mubi slug fallback: lowercase, replace non-alphanumeric with hyphens
@@ -203,18 +236,30 @@ async function fetchRottenTomatoes(
       const matchScore = html.match(/"criticsAll"[^}]*"score"\s*:\s*"(\d+)"/);
       const matchAll = html.match(/"criticsAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
       const matchTop = html.match(/"criticsTop"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-      const matchAudience = html.match(/"audienceAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
+      // Prefer verified audience (ticket-holders only) over audienceAll
+      const matchAudienceVerified = html.match(/"audienceVerified"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
+      const matchAudienceAll = html.match(/"audienceAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
       const tomatometer = matchScore?.[1] ? Number(matchScore[1]) : null;
       const avgAll = matchAll?.[1] ? Number(matchAll[1]) * 10 : null;
       const avgTop = matchTop?.[1] ? Number(matchTop[1]) * 10 : null;
-      const audienceAvg = matchAudience?.[1] ? Number(matchAudience[1]) : null;
+      // Use verified audience if available, fall back to all audience
+      const audienceAvg = matchAudienceVerified?.[1]
+        ? Number(matchAudienceVerified[1])
+        : matchAudienceAll?.[1]
+          ? Number(matchAudienceAll[1])
+          : null;
+      const isVerifiedAudience = matchAudienceVerified?.[1] != null;
 
       // Extract review counts from RT JSON structure
-      // audienceAll uses reviewCount, critics use ratingCount
-      const matchAudienceCount = html.match(/"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/);
+      // audienceVerified/audienceAll uses reviewCount, critics use ratingCount
+      const matchAudienceVerifiedCount = html.match(/"audienceVerified"[^}]*"reviewCount"\s*:\s*(\d+)/);
+      const matchAudienceAllCount = html.match(/"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/);
       const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
       const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
-      const audienceCount = matchAudienceCount?.[1] ? parseInt(matchAudienceCount[1], 10) : null;
+      // Use count matching the score source (verified if available, otherwise all)
+      const audienceCount = isVerifiedAudience
+        ? (matchAudienceVerifiedCount?.[1] ? parseInt(matchAudienceVerifiedCount[1], 10) : null)
+        : (matchAudienceAllCount?.[1] ? parseInt(matchAudienceAllCount[1], 10) : null);
       const allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
       const topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
 
@@ -237,7 +282,7 @@ async function fetchRottenTomatoes(
           scores.push(
             normalizeScore({
               source: 'rotten_tomatoes_audience',
-              label: 'RT Audience',
+              label: isVerifiedAudience ? 'RT Verified Audience' : 'RT Audience',
               normalized: null,
               raw: { value: audienceAvg, scale: '0-5' },
               count: audienceCount,

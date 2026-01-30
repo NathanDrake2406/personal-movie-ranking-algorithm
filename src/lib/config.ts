@@ -8,17 +8,14 @@ const OMDB_ROTATION_KEYS = [
   'f17eacb0',
 ];
 
-export type ApiKeys = { tmdbKey?: string; omdbKey?: string };
+export type ApiKeys = { tmdbKey?: string; omdbKey?: string; omdbKeys: string[] };
 
 export function getApiKeys(env: Record<string, string | undefined>): ApiKeys {
   const tmdbKey = env.TMDB_API_KEY || TMDB_FALLBACK_KEY;
-  const omdbKey = env.OMDB_API_KEY || pickOmdbKey();
-  return { tmdbKey, omdbKey };
-}
-
-function pickOmdbKey() {
-  const idx = Math.floor(Math.random() * OMDB_ROTATION_KEYS.length);
-  return OMDB_ROTATION_KEYS[idx];
+  const omdbKey = env.OMDB_API_KEY;
+  // Return all rotation keys for fallback attempts
+  const omdbKeys = omdbKey ? [omdbKey, ...OMDB_ROTATION_KEYS] : OMDB_ROTATION_KEYS;
+  return { tmdbKey, omdbKey, omdbKeys };
 }
 
 export const defaults = {

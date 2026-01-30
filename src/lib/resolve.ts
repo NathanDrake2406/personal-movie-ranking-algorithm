@@ -1,4 +1,4 @@
-import { fetchOmdbByTitle, fetchOmdbById } from './omdb';
+import { fetchOmdbByTitleWithRotation, fetchOmdbByIdWithRotation } from './omdb';
 import { getApiKeys } from './config';
 import { searchTmdbTitle, getTmdbDetails, tmdbToMovieInfo, tmdbSearchResultToInfo } from './tmdb';
 import type { MovieInfo } from './types';
@@ -6,8 +6,7 @@ import type { MovieInfo } from './types';
 export type ResolveResult = { movie: MovieInfo; used: 'tmdb' | 'omdb' };
 
 export async function resolveMovie(query: string, env: Record<string, string | undefined>): Promise<ResolveResult> {
-  const { tmdbKey, omdbKey } = getApiKeys(env);
-  const tmdb = tmdbKey;
+  const { tmdbKey, omdbKeys } = getApiKeys(env);
   if (tmdbKey) {
     const results = await searchTmdbTitle(query, tmdbKey);
     // Sort by popularity descending - most popular movie first
@@ -24,11 +23,11 @@ export async function resolveMovie(query: string, env: Record<string, string | u
     }
   }
 
-  if (!omdbKey) throw new Error('No TMDB or OMDb API key configured');
-  const omdbResults = await fetchOmdbByTitle(query, omdbKey);
+  if (omdbKeys.length === 0) throw new Error('No TMDB or OMDb API key configured');
+  const omdbResults = await fetchOmdbByTitleWithRotation(query, omdbKeys);
   const first = omdbResults[0];
   if (!first) throw new Error('No results for title');
-  const full = await fetchOmdbById(first.imdbID, omdbKey);
+  const full = await fetchOmdbByIdWithRotation(first.imdbID, omdbKeys);
   const movie: MovieInfo = {
     imdbId: first.imdbID,
     title: full.Title,
