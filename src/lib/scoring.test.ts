@@ -1,10 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { computeReliability, computeAdjustedScore, computeOverallScore, resetBaselines } from './scoring';
+import { describe, it, expect } from 'vitest';
+import { computeReliability, computeAdjustedScore, computeOverallScore } from './scoring';
 import type { SourceScore } from './types';
-
-beforeEach(() => {
-  resetBaselines();
-});
 
 describe('computeReliability', () => {
   it('returns 0.7 when count is null', () => {

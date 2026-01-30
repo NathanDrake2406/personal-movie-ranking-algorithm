@@ -34,8 +34,8 @@ export function computeAdjustedScore(
   return reliability * rawScore + (1 - reliability) * baseline;
 }
 
-// Baselines (C_i) - running averages, updated over time
-let baselines: Record<string, number> = {
+// Baselines (C_i) - fixed priors for Bayesian shrinkage
+const BASELINES: Record<string, number> = {
   imdb: 64,
   letterboxd: 63,
   rotten_tomatoes_audience: 70,
@@ -58,8 +58,6 @@ const WEIGHTS: Record<string, number> = {
   rotten_tomatoes_all: 0.08,
 };
 
-const BETA = 0.01; // baseline learning rate
-
 export function computeOverallScore(scores: SourceScore[]): OverallScore | null {
   // Filter to metrics that have valid normalized scores and are in our weight set
   const valid = scores.filter(
@@ -71,7 +69,7 @@ export function computeOverallScore(scores: SourceScore[]): OverallScore | null 
   // Compute per-metric values
   const metrics = valid.map((s) => {
     const reliability = computeReliability(s.count, s.source);
-    const baseline = baselines[s.source] ?? 65;
+    const baseline = BASELINES[s.source] ?? 65;
     const adjusted = computeAdjustedScore(s.normalized, reliability, baseline);
     const weight = WEIGHTS[s.source] ?? 0;
     return { source: s.source, reliability, adjusted, weight };
@@ -95,26 +93,5 @@ export function computeOverallScore(scores: SourceScore[]): OverallScore | null 
     metrics.length;
   const disagreement = Math.sqrt(variance);
 
-  // Update baselines
-  for (const m of metrics) {
-    if (baselines[m.source] != null) {
-      baselines[m.source] = (1 - BETA) * baselines[m.source] + BETA * m.adjusted;
-    }
-  }
-
   return { score, confidence, disagreement };
-}
-
-// For testing: reset baselines to initial values
-export function resetBaselines(): void {
-  baselines = {
-    imdb: 64,
-    letterboxd: 63,
-    rotten_tomatoes_audience: 70,
-    douban: 70,
-    metacritic: 60,
-    rotten_tomatoes_all: 75,
-    rotten_tomatoes_top: 75,
-    mubi: 65,
-  };
 }
