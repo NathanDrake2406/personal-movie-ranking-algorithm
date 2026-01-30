@@ -80,19 +80,22 @@ async function fetchMubi(ctx: FetcherContext): Promise<SourceScore> {
       headers: { 'user-agent': BROWSER_UA, accept: 'text/html' },
     });
 
-    // Extract "Average rating: X.X/10" from meta description or page content
-    const match = html.match(/Average rating:\s*([\d.]+)\/10/);
-    if (match?.[1]) {
-      const value = parseFloat(match[1]);
-      if (!isNaN(value)) {
-        return normalizeScore({
-          source: 'mubi',
-          label: 'Mubi',
-          normalized: null,
-          raw: { value, scale: '0-10' },
-          url: `https://mubi.com/en/films/${mubiId}`,
-        });
-      }
+    // Extract "Average rating: X.X/10 out of N ratings"
+    const ratingMatch = html.match(/Average rating:\s*([\d.]+)\/10/);
+    const countMatch = html.match(/out of\s+([\d,]+)\s*ratings/i);
+
+    const value = ratingMatch?.[1] ? parseFloat(ratingMatch[1]) : null;
+    const count = countMatch?.[1] ? parseInt(countMatch[1].replace(/,/g, ''), 10) : null;
+
+    if (value != null && !isNaN(value)) {
+      return normalizeScore({
+        source: 'mubi',
+        label: 'Mubi',
+        normalized: null,
+        raw: { value, scale: '0-10' },
+        count,
+        url: `https://mubi.com/en/films/${mubiId}`,
+      });
     }
 
     return {
