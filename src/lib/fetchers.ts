@@ -146,9 +146,9 @@ async function fetchRottenTomatoes(
       if (matchTop?.[1]) avgTop = Number(matchTop[1]) * 10;
       if (avgAll != null) value = avgAll;
 
-      // Extract review counts
-      const matchAllCount = html.match(/"criticsAll"[^}]*"numReviews"\s*:\s*"(\d+)/);
-      const matchTopCount = html.match(/"criticsTop"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      // Extract review counts (critics use ratingCount field)
+      const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
+      const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
       allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
       topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
     }
@@ -209,10 +209,11 @@ async function fetchRottenTomatoes(
       const avgTop = matchTop?.[1] ? Number(matchTop[1]) * 10 : null;
       const audienceAvg = matchAudience?.[1] ? Number(matchAudience[1]) : null;
 
-      // Extract review counts (numReviews may have "+" suffix which regex strips)
-      const matchAudienceCount = html.match(/"audienceAll"[^}]*"numReviews"\s*:\s*"(\d+)/);
-      const matchAllCount = html.match(/"criticsAll"[^}]*"numReviews"\s*:\s*"(\d+)/);
-      const matchTopCount = html.match(/"criticsTop"[^}]*"numReviews"\s*:\s*"(\d+)/);
+      // Extract review counts from RT JSON structure
+      // audienceAll uses reviewCount, critics use ratingCount
+      const matchAudienceCount = html.match(/"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/);
+      const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
+      const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
       const audienceCount = matchAudienceCount?.[1] ? parseInt(matchAudienceCount[1], 10) : null;
       const allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
       const topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
@@ -325,7 +326,7 @@ async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | nul
     });
     // Extract from JSON-LD structured data
     const valueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
-    const countMatch = html.match(/"ratingCount"\s*:\s*(\d+)/);
+    const countMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
     const value = valueMatch ? Number(valueMatch[1]) : null;
     const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : null;
     return normalizeScore({
