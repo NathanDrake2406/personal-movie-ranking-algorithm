@@ -3,12 +3,16 @@ import { computeReliability, computeAdjustedScore, computeOverallScore } from '.
 import type { SourceScore } from './types';
 
 describe('computeReliability', () => {
-  it('returns 0.7 when count is null', () => {
-    expect(computeReliability(null, 'imdb')).toBe(0.7);
+  it('returns 0.75 when count is null', () => {
+    expect(computeReliability(null, 'imdb')).toBe(0.75);
   });
 
-  it('returns 0.7 when count is undefined', () => {
-    expect(computeReliability(undefined, 'imdb')).toBe(0.7);
+  it('returns 0.75 when count is undefined', () => {
+    expect(computeReliability(undefined, 'imdb')).toBe(0.75);
+  });
+
+  it('returns 0.75 when count is 0 (treated as unknown)', () => {
+    expect(computeReliability(0, 'imdb')).toBe(0.75);
   });
 
   it('computes v / (v + m) for imdb with 10000 votes', () => {
@@ -22,12 +26,19 @@ describe('computeReliability', () => {
   });
 
   it('computes reliability for metacritic with 20 reviews', () => {
-    // m_metacritic = 20, so 20 / (20 + 20) = 0.5
-    expect(computeReliability(20, 'metacritic')).toBe(0.5);
+    // m_metacritic = 3, so 20 / (20 + 3) = 0.87
+    expect(computeReliability(20, 'metacritic')).toBeCloseTo(0.87, 2);
   });
 
-  it('returns 0.7 for unknown metric', () => {
-    expect(computeReliability(100, 'unknown_metric')).toBe(0.7);
+  it('returns 0.75 for unknown metric', () => {
+    expect(computeReliability(100, 'unknown_metric')).toBe(0.75);
+  });
+
+  it('applies age multiplier for classic films', () => {
+    // For a 1954 film (70+ years old), multiplier is 0.25
+    // m_metacritic = 3 * 0.25 = 0.75
+    // 7 / (7 + 0.75) = 0.903
+    expect(computeReliability(7, 'metacritic', 1954)).toBeCloseTo(0.90, 1);
   });
 });
 
@@ -85,21 +96,20 @@ describe('computeOverallScore', () => {
     ];
     const result = computeOverallScore(scores);
     expect(result).not.toBeNull();
-    // imdb: reliability=0.909, adjusted=78.5, weight=0.15
-    // metacritic: reliability=0.667, adjusted=66.7, weight=0.18
-    // W_A = 0.15 + 0.18 = 0.33
-    // score = (0.15*78.5 + 0.18*66.7) / 0.33 = (11.78 + 12.01) / 0.33 = 72.1
-    expect(result!.score).toBeCloseTo(72, 0);
+    // imdb: reliability=0.909, adjusted=78.5, weight=0.11
+    // metacritic: reliability=40/(40+3)=0.93, adjusted=69.3, weight=0.18
+    // score = (0.11*78.5 + 0.18*69.3) / 0.29 = 72.8
+    expect(result!.score).toBeCloseTo(73, 0);
   });
 
-  it('uses 0.7 reliability when count is missing', () => {
+  it('uses 0.75 reliability when count is missing', () => {
     const scores: SourceScore[] = [
       { source: 'imdb', label: 'IMDb', normalized: 80 }, // no count
     ];
     const result = computeOverallScore(scores);
-    // reliability = 0.7 (default)
-    // adjusted = 0.7 * 80 + 0.3 * 64 = 56 + 19.2 = 75.2
-    expect(result!.score).toBeCloseTo(75.2, 0);
+    // reliability = 0.75 (default)
+    // adjusted = 0.75 * 80 + 0.25 * 64 = 60 + 16 = 76
+    expect(result!.score).toBeCloseTo(76, 0);
   });
 
   it('returns confidence as weighted mean of reliabilities', () => {
@@ -108,10 +118,10 @@ describe('computeOverallScore', () => {
       { source: 'metacritic', label: 'Metacritic', normalized: 70, count: 40 },
     ];
     const result = computeOverallScore(scores);
-    // imdb reliability=0.909, weight=0.15
-    // metacritic reliability=0.667, weight=0.18
-    // confidence = (0.15*0.909 + 0.18*0.667) / 0.33 = 0.776
-    expect(result!.confidence).toBeCloseTo(0.78, 1);
+    // imdb: reliability=0.909, weight=0.11
+    // metacritic: reliability=0.93 (40/(40+3)), weight=0.18
+    // confidence = (0.11*0.909 + 0.18*0.93) / 0.29 = 0.92
+    expect(result!.confidence).toBeCloseTo(0.92, 1);
   });
 
   it('returns disagreement as std dev of adjusted scores', () => {
@@ -121,5 +131,16 @@ describe('computeOverallScore', () => {
     ];
     const result = computeOverallScore(scores);
     expect(result!.disagreement).toBeGreaterThan(0);
+  });
+
+  it('boosts reliability for classic films', () => {
+    const scores: SourceScore[] = [
+      { source: 'metacritic', label: 'Metacritic', normalized: 98, count: 7 },
+    ];
+    // Without year: reliability = 7/(7+3) = 0.70
+    const resultNoYear = computeOverallScore(scores);
+    // With 1954 (classic): m = 3 * 0.25 = 0.75, reliability = 7/(7+0.75) = 0.90
+    const resultClassic = computeOverallScore(scores, 1954);
+    expect(resultClassic!.score).toBeGreaterThan(resultNoYear!.score);
   });
 });

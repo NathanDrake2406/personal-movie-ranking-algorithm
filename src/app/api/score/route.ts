@@ -1,0 +1,39 @@
+import { NextResponse } from 'next/server';
+import { fetchWikidataIds } from '@/lib/wikidata';
+import { runFetchers } from '@/lib/fetchers';
+import { resolveMovie } from '@/lib/resolve';
+import { getApiKeys } from '@/lib/config';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const title = (body?.title as string | undefined)?.trim();
+    if (!title) {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+
+    const env = {
+      OMDB_API_KEY: process.env.OMDB_API_KEY,
+      TMDB_API_KEY: process.env.TMDB_API_KEY,
+    };
+
+    // Ensure we have at least fallback keys
+    const { tmdbKey, omdbKey } = getApiKeys(env);
+    if (!tmdbKey || !omdbKey) {
+      return NextResponse.json({ error: 'API keys not configured' }, { status: 500 });
+    }
+
+    const { movie } = await resolveMovie(title, env);
+    if (!movie.imdbId) {
+      return NextResponse.json({ error: 'Could not determine IMDb ID' }, { status: 422 });
+    }
+
+    const wikidata = await fetchWikidataIds(movie.imdbId);
+    const payload = await runFetchers({ movie, wikidata, env });
+
+    return NextResponse.json(payload, { status: 200 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
+}

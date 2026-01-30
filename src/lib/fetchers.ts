@@ -299,6 +299,29 @@ async function fetchRottenTomatoes(
   }
 }
 
+// Try to scrape Metacritic page and extract score/count
+async function scrapeMetacritic(slug: string): Promise<{ value: number | null; count: number | null } | null> {
+  try {
+    const html = await fetchText(`https://www.metacritic.com/movie/${slug}/`, {
+      headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
+    });
+    // Extract from HTML: title="Metascore X out of 100" and "Based on N Critic"
+    const valueMatch = html.match(/title="Metascore (\d+) out of 100"/);
+    const countMatch = html.match(/Based on (\d+) Critic/);
+    // Fallback to legacy JSON-LD format
+    const legacyValueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
+    const legacyCountMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
+    const value = valueMatch ? Number(valueMatch[1]) : (legacyValueMatch ? Number(legacyValueMatch[1]) : null);
+    const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : (legacyCountMatch?.[1] ? parseInt(legacyCountMatch[1], 10) : null);
+    if (value != null) {
+      return { value, count };
+    }
+    return null; // Page loaded but no score found
+  } catch {
+    return null; // 404 or other error
+  }
+}
+
 async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | null): Promise<SourceScore> {
   // Wikidata P1712 may include "movie/" prefix, strip it if present
   const slug = ctx.wikidata.metacritic?.replace(/^movie\//, '');
@@ -320,41 +343,47 @@ async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | nul
       error: 'No Metacritic slug',
     };
   }
-  try {
-    const html = await fetchText(`https://www.metacritic.com/movie/${slug}/`, {
-      headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
-    });
-    // Extract from JSON-LD structured data
-    const valueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
-    const countMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
-    const value = valueMatch ? Number(valueMatch[1]) : null;
-    const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : null;
+
+  // Try original slug first
+  let result = await scrapeMetacritic(slug);
+  let usedSlug = slug;
+
+  // If failed and we have a year, try slug with year appended (e.g., "seven-samurai-1954")
+  if (!result && ctx.movie.year) {
+    const slugWithYear = `${slug}-${ctx.movie.year}`;
+    result = await scrapeMetacritic(slugWithYear);
+    if (result) usedSlug = slugWithYear;
+  }
+
+  if (result) {
     return normalizeScore({
       source: 'metacritic',
       label: 'Metacritic',
       normalized: null,
-      raw: { value, scale: '0-100' },
-      count,
-      url: `https://www.metacritic.com/movie/${slug}`,
+      raw: { value: result.value, scale: '0-100' },
+      count: result.count,
+      url: `https://www.metacritic.com/movie/${usedSlug}`,
     });
-  } catch (err) {
-    if (fallbackValue != null) {
-      return normalizeScore({
-        source: 'metacritic',
-        label: 'Metacritic',
-        normalized: null,
-        raw: { value: fallbackValue, scale: '0-100' },
-        fromFallback: true,
-        error: undefined,
-      });
-    }
-    return {
+  }
+
+  // Fall back to OMDB value if available
+  if (fallbackValue != null) {
+    return normalizeScore({
       source: 'metacritic',
       label: 'Metacritic',
       normalized: null,
-      error: (err as Error).message,
-    };
+      raw: { value: fallbackValue, scale: '0-100' },
+      fromFallback: true,
+      error: undefined,
+    });
   }
+
+  return {
+    source: 'metacritic',
+    label: 'Metacritic',
+    normalized: null,
+    error: 'Could not fetch Metacritic score',
+  };
 }
 
 async function fetchLetterboxd(ctx: FetcherContext): Promise<SourceScore> {
@@ -662,8 +691,9 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   const flattened = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
   const normalized = flattened.map(normalizeScore);
 
-  // Use Bayesian scoring
-  const overall = computeOverallScore(normalized);
+  // Use Bayesian scoring with year-adjusted reliability
+  const movieYear = ctx.movie.year ? parseInt(ctx.movie.year, 10) : undefined;
+  const overall = computeOverallScore(normalized, movieYear);
 
   const missingSources = normalized.filter((s) => s.normalized == null).map((s) => s.label);
 

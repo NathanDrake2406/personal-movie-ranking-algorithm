@@ -45,7 +45,7 @@ describe('runFetchers', () => {
     const res = await runFetchers(baseCtx);
     expect(res.sources).toHaveLength(6);
     const imdb = res.sources.find((s) => s.source === 'imdb');
-    expect(imdb?.normalized).toBeCloseTo(84);
+    expect(imdb?.normalized).toBeCloseTo(88, 0);
     const mc = res.sources.find((s) => s.source === 'metacritic');
     expect(mc?.normalized).toBe(73);
     const lb = res.sources.find((s) => s.source === 'letterboxd');
@@ -68,7 +68,7 @@ describe('runFetchers', () => {
       env: { OMDB_API_KEY: undefined },
     });
     const imdb = res.sources.find((s) => s.source === 'imdb');
-    expect(imdb?.normalized).toBeCloseTo(84);
+    expect(imdb?.normalized).toBeCloseTo(88, 0);
   });
 
   it('uses OMDb fallbacks when RT/Metacritic slugs missing', async () => {

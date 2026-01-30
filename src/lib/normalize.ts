@@ -2,6 +2,16 @@ import type { SourceScore } from './types';
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
 
+// IMDb scores are compressed (6-9.3 practical range)
+// Boost high scores so 8.5 IMDb ≈ 90, 9.0 ≈ 96
+function boostImdb(raw: number): number {
+  if (raw <= 7.0) {
+    return raw * 10; // linear below 7
+  }
+  // Map 7.0-9.3 → 70-100 (stretches the top end)
+  return 70 + ((raw - 7.0) / 2.3) * 30;
+}
+
 // Convert each source's native scale to 0-100.
 export function normalizeScore(source: SourceScore): SourceScore {
   const { source: name, raw } = source;
@@ -16,8 +26,8 @@ export function normalizeScore(source: SourceScore): SourceScore {
       normalized = clamp((v / 10) * 100);
       break;
     case 'imdb':
-      // IMDb ratings are 0-10
-      normalized = clamp((v / 10) * 100);
+      // IMDb ratings are compressed - boost high scores
+      normalized = clamp(boostImdb(v));
       break;
     case 'letterboxd':
       // Letterboxd ratings are 0-5
