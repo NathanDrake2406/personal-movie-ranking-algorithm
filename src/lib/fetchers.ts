@@ -320,13 +320,16 @@ async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | nul
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
     });
     // Extract from JSON-LD structured data
-    const match = html.match(/"ratingValue"\s*:\s*(\d+)/);
-    const value = match ? Number(match[1]) : null;
+    const valueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
+    const countMatch = html.match(/"ratingCount"\s*:\s*(\d+)/);
+    const value = valueMatch ? Number(valueMatch[1]) : null;
+    const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : null;
     return normalizeScore({
       source: 'metacritic',
       label: 'Metacritic',
       normalized: null,
       raw: { value, scale: '0-100' },
+      count,
       url: `https://www.metacritic.com/movie/${slug}`,
     });
   } catch (err) {
