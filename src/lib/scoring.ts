@@ -25,3 +25,11 @@ export function computeReliability(
 
   return count / (count + m);
 }
+
+export function computeAdjustedScore(
+  rawScore: number,
+  reliability: number,
+  baseline: number
+): number {
+  return reliability * rawScore + (1 - reliability) * baseline;
+}
