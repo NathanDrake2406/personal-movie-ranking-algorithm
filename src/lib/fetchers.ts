@@ -1,5 +1,6 @@
 import { fetchJson, fetchText } from './http';
-import { compositeScore, normalizeScore } from './normalize';
+import { normalizeScore } from './normalize';
+import { computeOverallScore } from './scoring';
 import type { MovieInfo, ScorePayload, SourceScore, WikidataIds } from './types';
 import { MemoryCache } from './cache';
 import { getApiKeys } from './config';
@@ -663,11 +664,12 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
 
   const flattened = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
   const normalized = flattened.map(normalizeScore);
-  const composite = compositeScore(normalized);
+
+  // Use Bayesian scoring
+  const overall = computeOverallScore(normalized);
+
   const missingSources = normalized.filter((s) => s.normalized == null).map((s) => s.label);
 
-  // Temporarily bridge old composite to new overall structure
-  const overall = composite !== null ? { score: composite, confidence: 1, disagreement: 0 } : null;
   const payload: ScorePayload = { movie: ctx.movie, sources: normalized, overall, missingSources };
   scoreCache.set(cacheKey, payload);
   return payload;
