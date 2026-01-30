@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState, useEffect, useRef, KeyboardEvent, memo, useReducer } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent, memo, useReducer } from 'react';
 import styles from './page.module.css';
 import type { ScorePayload, SourceScore } from '@/lib/types';
 
@@ -21,7 +21,8 @@ type FetchState =
 type FetchAction =
   | { type: 'FETCH_START' }
   | { type: 'FETCH_SUCCESS'; data: ScorePayload }
-  | { type: 'FETCH_ERROR'; error: string };
+  | { type: 'FETCH_ERROR'; error: string }
+  | { type: 'RESET' };
 
 function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   switch (action.type) {
@@ -31,6 +32,8 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
       return { status: 'success', data: action.data };
     case 'FETCH_ERROR':
       return { status: 'error', error: action.error };
+    case 'RESET':
+      return { status: 'idle' };
   }
 }
 
@@ -144,6 +147,7 @@ export default function Home() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [fetchState, dispatch] = useReducer(fetchReducer, { status: 'idle' });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const justSelected = useRef(false);
 
@@ -172,7 +176,7 @@ export default function Home() {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const json = await res.json();
         setSuggestions(json.results || []);
-        setShowDropdown(json.results?.length > 0);
+        setShowDropdown(true);
         setHighlightedIndex(-1);
       } catch {
         setSuggestions([]);
@@ -196,21 +200,39 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && listboxRef.current) {
+      const item = listboxRef.current.children[highlightedIndex] as HTMLElement;
+      item?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex]);
+
   // Keyboard navigation
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (!showDropdown || suggestions.length === 0) return;
+    if (suggestions.length === 0) return;
 
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+        if (!showDropdown) {
+          setShowDropdown(true);
+          setHighlightedIndex(0);
+        } else {
+          setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+        }
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+        if (!showDropdown) {
+          setShowDropdown(true);
+          setHighlightedIndex(suggestions.length - 1);
+        } else {
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+        }
         break;
       case 'Enter':
-        if (highlightedIndex >= 0) {
+        if (showDropdown && highlightedIndex >= 0) {
           e.preventDefault();
           handleSelect(suggestions[highlightedIndex]);
         }
@@ -222,14 +244,14 @@ export default function Home() {
     }
   };
 
-  const fetchScores = async (title: string) => {
+  const fetchScores = async (tmdbId: number) => {
     dispatch({ type: 'FETCH_START' });
     setShowDropdown(false);
     try {
       const res = await fetch('/api/score', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ tmdbId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Request failed');
@@ -245,13 +267,16 @@ export default function Home() {
     setSuggestions([]);
     setShowDropdown(false);
     setHighlightedIndex(-1);
-    fetchScores(movie.title);
+    fetchScores(movie.id);
   };
 
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    fetchScores(query);
+  const handleReset = () => {
+    setQuery('');
+    setSuggestions([]);
+    setShowDropdown(false);
+    setHighlightedIndex(-1);
+    dispatch({ type: 'RESET' });
+    inputRef.current?.focus();
   };
 
   // Separate RT scores from others
@@ -265,7 +290,7 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <header className={styles.masthead}>
-        <p className={styles.mastheadTitle}>The Film Index</p>
+        <p className={styles.mastheadTitle} onClick={handleReset}>The Film Index</p>
       </header>
 
       <section className={styles.hero}>
@@ -277,32 +302,27 @@ export default function Home() {
         </p>
 
         <div className={styles.searchWrapper} ref={dropdownRef}>
-          <form className={styles.searchForm} onSubmit={onSubmit}>
-            <div className={styles.inputWrapper}>
-              <input
-                ref={inputRef}
-                className={styles.searchInput}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-                placeholder="Search for a film…"
-                autoComplete="off"
-                aria-label="Search for a film"
-                role="combobox"
-                aria-expanded={showDropdown && suggestions.length > 0}
-                aria-controls="search-listbox"
-                aria-activedescendant={highlightedIndex >= 0 ? `option-${suggestions[highlightedIndex]?.id}` : undefined}
-              />
-              {searchLoading ? <span className={styles.inputSpinner} /> : null}
-            </div>
-            <button className={styles.searchBtn} type="submit" disabled={loading}>
-              {loading ? 'Loading…' : 'Go'}
-            </button>
-          </form>
+          <div className={styles.inputWrapper}>
+            <input
+              ref={inputRef}
+              className={styles.searchInput}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+              placeholder="Search for a film…"
+              autoComplete="off"
+              aria-label="Search for a film"
+              role="combobox"
+              aria-expanded={showDropdown && suggestions.length > 0}
+              aria-controls="search-listbox"
+              aria-activedescendant={highlightedIndex >= 0 ? `option-${suggestions[highlightedIndex]?.id}` : undefined}
+            />
+            {searchLoading ? <span className={styles.inputSpinner} /> : null}
+          </div>
 
           {showDropdown && suggestions.length > 0 ? (
-            <ul id="search-listbox" role="listbox" className={styles.dropdown}>
+            <ul id="search-listbox" role="listbox" className={styles.dropdown} ref={listboxRef}>
               {suggestions.map((movie, index) => (
                 <li key={movie.id} role="option" id={`option-${movie.id}`} aria-selected={index === highlightedIndex}>
                   <button
@@ -334,9 +354,20 @@ export default function Home() {
               ))}
             </ul>
           ) : null}
+
+          {showDropdown && query.length >= 2 && suggestions.length === 0 && !searchLoading ? (
+            <div className={styles.noResults}>No results found</div>
+          ) : null}
         </div>
 
         {error ? <div className={styles.error}>{error}</div> : null}
+
+        {loading ? (
+          <div className={styles.loadingWrapper}>
+            <div className={styles.loadingSpinner} />
+            <p className={styles.loadingText}>Fetching scores...</p>
+          </div>
+        ) : null}
       </section>
 
       {data ? (

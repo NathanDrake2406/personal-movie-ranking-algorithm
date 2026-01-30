@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
 import { fetchWikidataIds } from '@/lib/wikidata';
 import { runFetchers } from '@/lib/fetchers';
-import { resolveMovie } from '@/lib/resolve';
+import { resolveByTmdbId } from '@/lib/resolve';
 import { getApiKeys } from '@/lib/config';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const title = (body?.title as string | undefined)?.trim();
-    if (!title) {
-      return NextResponse.json({ error: 'title is required' }, { status: 400 });
+    const tmdbId = body?.tmdbId as number | undefined;
+    if (!tmdbId || typeof tmdbId !== 'number') {
+      return NextResponse.json({ error: 'tmdbId is required' }, { status: 400 });
     }
 
     const env = {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'API keys not configured' }, { status: 500 });
     }
 
-    const { movie } = await resolveMovie(title, env);
+    const { movie } = await resolveByTmdbId(tmdbId, env);
     if (!movie.imdbId) {
       return NextResponse.json({ error: 'Could not determine IMDb ID' }, { status: 422 });
     }

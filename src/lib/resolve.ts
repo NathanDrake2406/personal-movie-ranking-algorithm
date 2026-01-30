@@ -5,6 +5,18 @@ import type { MovieInfo } from './types';
 
 export type ResolveResult = { movie: MovieInfo; used: 'tmdb' | 'omdb' };
 
+export async function resolveByTmdbId(
+  tmdbId: number,
+  env: Record<string, string | undefined>,
+): Promise<ResolveResult> {
+  const { tmdbKey } = getApiKeys(env);
+  if (!tmdbKey) throw new Error('TMDB API key not configured');
+
+  const details = await getTmdbDetails(tmdbId, tmdbKey);
+  const movie = tmdbToMovieInfo(details);
+  return { movie, used: 'tmdb' };
+}
+
 export async function resolveMovie(query: string, env: Record<string, string | undefined>): Promise<ResolveResult> {
   const { tmdbKey, omdbKeys } = getApiKeys(env);
   if (tmdbKey) {

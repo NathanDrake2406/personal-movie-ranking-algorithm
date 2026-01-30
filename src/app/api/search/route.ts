@@ -7,6 +7,7 @@ type TMDBSearchResult = {
     title: string;
     release_date?: string;
     poster_path?: string;
+    popularity?: number;
   }>;
 };
 
@@ -32,7 +33,10 @@ export async function GET(request: Request) {
     );
     const data: TMDBSearchResult = await res.json();
 
-    const results = data.results.slice(0, 8).map((movie) => ({
+    // Sort by popularity (most popular first) before taking top 10
+    const sorted = [...data.results].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+
+    const results = sorted.slice(0, 10).map((movie) => ({
       id: movie.id,
       title: movie.title,
       year: movie.release_date?.split('-')[0] || null,
