@@ -1,117 +1,61 @@
 import type { SourceScore, OverallScore } from './types';
 
-// Prior strengths (m_i) - votes/reviews needed before trusting raw score
-const PRIOR_STRENGTHS: Record<string, number> = {
-  imdb: 6000,
-  letterboxd: 3000,
-  rotten_tomatoes_audience: 1000,
-  douban: 6000,
-  metacritic: 3,
-  rotten_tomatoes_all: 15,
-  rotten_tomatoes_top: 6,
-  mubi: 100,
-};
+/**
+ * Simple bloc-based weighted scoring algorithm.
+ *
+ * Three blocs with shares of final score:
+ *   - Popular (20%): IMDb 30%, Douban 35%, RT Audience 35%
+ *   - Cinephile (35%): Letterboxd 80%, Mubi 20%
+ *   - Critical (45%): Metacritic 40%, RT Top Critics 40%, RT All Critics 20%
+ *
+ * Missing sources are handled by renormalizing over available sources.
+ */
 
-const DEFAULT_RELIABILITY = 0.65;
-
-// Scale m values based on movie age - older films naturally have fewer reviews
-function getAgeMultiplier(year: number | undefined): number {
-  if (!year) return 1;
-  const age = new Date().getFullYear() - year;
-  if (age > 50) return 0.25; // classics get 4x easier threshold
-  if (age > 25) return 0.5; // older films get 2x easier threshold
-  return 1;
-}
-
-export function computeReliability(
-  count: number | null | undefined,
-  metricKey: string,
-  movieYear?: number
-): number {
-  // Treat 0 or negative as "unknown" - a real rating source wouldn't have 0 reviews
-  if (count == null || count <= 0) return DEFAULT_RELIABILITY;
-
-  const baseM = PRIOR_STRENGTHS[metricKey];
-  if (baseM == null) return DEFAULT_RELIABILITY;
-
-  const m = baseM * getAgeMultiplier(movieYear);
-  return count / (count + m);
-}
-
-export function computeAdjustedScore(
-  rawScore: number,
-  reliability: number,
-  baseline: number
-): number {
-  return reliability * rawScore + (1 - reliability) * baseline;
-}
-
-// Baselines (C_i) - fixed priors for Bayesian shrinkage
-const BASELINES: Record<string, number> = {
-  imdb: 64,
-  letterboxd: 65,
-  rotten_tomatoes_audience: 70,
-  douban: 65,
-  metacritic: 55,
-  rotten_tomatoes_all: 65,
-  rotten_tomatoes_top: 55,
-  mubi: 70,
-};
-
-// Weights (w_i) - sum to 1.0
+// Absolute weights (bloc share × within-bloc weight)
 const WEIGHTS: Record<string, number> = {
-  metacritic: 0.18,
-  letterboxd: 0.14,
-  imdb: 0.1,
-  rotten_tomatoes_top: 0.16,
-  douban: 0.11,
-  rotten_tomatoes_audience: 0.08,
-  mubi: 0.1,
-  rotten_tomatoes_all: 0.13,
+  // Popular bloc (20%)
+  imdb: 0.2 * 0.3, // 0.06
+  douban: 0.2 * 0.35, // 0.07
+  rotten_tomatoes_audience: 0.2 * 0.35, // 0.07
+
+  // Cinephile bloc (35%)
+  letterboxd: 0.35 * 0.8, // 0.28
+  mubi: 0.35 * 0.2, // 0.07
+
+  // Critical bloc (45%)
+  metacritic: 0.45 * 0.4, // 0.18
+  rotten_tomatoes_top: 0.45 * 0.4, // 0.18
+  rotten_tomatoes_all: 0.45 * 0.2, // 0.09
 };
 
 // Minimum sources required for a verdict
-// Mubi (cinephile) and Douban (Chinese) are often unavailable - allow up to 2 missing
 const MIN_SOURCES_FOR_VERDICT = 6;
 
 export function computeOverallScore(
   scores: SourceScore[],
-  movieYear?: number
+  _movieYear?: number
 ): OverallScore | null {
-  // Filter to metrics that have valid normalized scores and are in our weight set
+  // Filter to sources with valid normalized scores that are in our weight set
   const valid = scores.filter(
     (s) => s.normalized != null && WEIGHTS[s.source] != null
   ) as Array<SourceScore & { normalized: number }>;
 
-  // No verdict if 2+ sources are missing (e.g., Mubi missing is OK, but not 2+)
   if (valid.length < MIN_SOURCES_FOR_VERDICT) return null;
 
-  // Compute per-metric values
-  const metrics = valid.map((s) => {
-    const reliability = computeReliability(s.count, s.source, movieYear);
-    const baseline = BASELINES[s.source] ?? 65;
-    const adjusted = computeAdjustedScore(s.normalized, reliability, baseline);
-    const weight = WEIGHTS[s.source] ?? 0;
-    return { source: s.source, reliability, adjusted, weight };
-  });
-
-  // Renormalize weights
-  const totalWeight = metrics.reduce((sum, m) => sum + m.weight, 0);
-
-  // Compute overall score
+  // Compute weighted average with renormalization
+  const totalWeight = valid.reduce((sum, s) => sum + WEIGHTS[s.source], 0);
   const score =
-    metrics.reduce((sum, m) => sum + m.weight * m.adjusted, 0) / totalWeight;
+    valid.reduce((sum, s) => sum + WEIGHTS[s.source] * s.normalized, 0) /
+    totalWeight;
 
-  // Compute confidence (weighted mean of reliabilities)
-  const confidence =
-    metrics.reduce((sum, m) => sum + m.weight * m.reliability, 0) / totalWeight;
+  // Coverage: what fraction of total weight is present (0-1)
+  const coverage = totalWeight;
 
-  // Compute disagreement (std dev of adjusted scores)
-  const meanAdjusted = score;
+  // Disagreement: std dev of available source scores (surfaces polarization)
   const variance =
-    metrics.reduce((sum, m) => sum + Math.pow(m.adjusted - meanAdjusted, 2), 0) /
-    metrics.length;
+    valid.reduce((sum, s) => sum + Math.pow(s.normalized - score, 2), 0) /
+    valid.length;
   const disagreement = Math.sqrt(variance);
 
-  return { score, confidence, disagreement };
+  return { score, coverage, disagreement };
 }

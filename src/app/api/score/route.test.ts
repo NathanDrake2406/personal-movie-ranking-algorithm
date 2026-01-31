@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
 vi.mock('@/lib/resolve', () => ({
-  resolveMovie: vi.fn(async () => ({
+  resolveByTmdbId: vi.fn(async () => ({
     movie: { imdbId: 'tt123', title: 'Inception', year: '2010', poster: 'p', tmdbId: 42 },
-    used: 'tmdb' as const,
   })),
 }));
 
@@ -15,12 +14,12 @@ vi.mock('@/lib/fetchers', () => ({
   runFetchers: vi.fn(async ({ movie }) => ({
     movie,
     sources: [{ source: 'imdb', label: 'IMDb', normalized: 84, count: 100000 }],
-    overall: { score: 84, confidence: 0.9, disagreement: 0 },
+    overall: { score: 84, coverage: 0.9, disagreement: 0 },
   })),
 }));
 
 import { POST } from './route';
-import { resolveMovie } from '@/lib/resolve';
+import { resolveByTmdbId } from '@/lib/resolve';
 import { vi as vitestVi } from 'vitest';
 
 beforeAll(() => {
@@ -29,10 +28,10 @@ beforeAll(() => {
 });
 
 describe('POST /api/score', () => {
-  it('returns payload for valid title', async () => {
+  it('returns payload for valid tmdbId', async () => {
     const req = new Request('http://localhost/api/score', {
       method: 'POST',
-      body: JSON.stringify({ title: 'Inception' }),
+      body: JSON.stringify({ tmdbId: 42 }),
       headers: { 'content-type': 'application/json' },
     });
 
@@ -41,11 +40,11 @@ describe('POST /api/score', () => {
     const json = await res.json();
     expect(json.overall.score).toBe(84);
     expect(json.movie.imdbId).toBe('tt123');
-    const mockedResolve = vitestVi.mocked(resolveMovie);
-    expect(mockedResolve.mock.calls[0][0]).toBe('Inception');
+    const mockedResolve = vitestVi.mocked(resolveByTmdbId);
+    expect(mockedResolve.mock.calls[0][0]).toBe(42);
   });
 
-  it('400s when title missing', async () => {
+  it('400s when tmdbId missing', async () => {
     const req = new Request('http://localhost/api/score', {
       method: 'POST',
       body: JSON.stringify({}),
