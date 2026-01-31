@@ -94,6 +94,15 @@ function slugifyForMubi(title: string) {
     .replace(/^-+|-+$/g, '');
 }
 
+// Letterboxd slug fallback: title-year format (e.g., "the-wrecking-crew-2026")
+function slugifyForLetterboxd(title: string, year?: string) {
+  const titleSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return year ? `${titleSlug}-${year}` : titleSlug;
+}
+
 async function fetchMubi(ctx: FetcherContext): Promise<SourceScore> {
   // Prefer Wikidata ID (numeric), fall back to title slug
   const mubiId = ctx.wikidata.mubi;
@@ -432,10 +441,8 @@ async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | nul
 }
 
 async function fetchLetterboxd(ctx: FetcherContext): Promise<SourceScore> {
-  const slug = ctx.wikidata.letterboxd;
-  if (!slug) {
-    return { source: 'letterboxd', label: 'Letterboxd', normalized: null, error: 'No Letterboxd slug' };
-  }
+  // Prefer Wikidata slug, fall back to title-year slug
+  const slug = ctx.wikidata.letterboxd || slugifyForLetterboxd(ctx.movie.title, ctx.movie.year);
   try {
     const html = await fetchText(`https://letterboxd.com/film/${slug}/`, {
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },

@@ -3,8 +3,8 @@ import type { SourceScore, OverallScore } from './types';
 // Prior strengths (m_i) - votes/reviews needed before trusting raw score
 const PRIOR_STRENGTHS: Record<string, number> = {
   imdb: 6000,
-  letterboxd: 1000,
-  rotten_tomatoes_audience: 2000,
+  letterboxd: 3000,
+  rotten_tomatoes_audience: 1000,
   douban: 6000,
   metacritic: 3,
   rotten_tomatoes_all: 15,
@@ -12,7 +12,7 @@ const PRIOR_STRENGTHS: Record<string, number> = {
   mubi: 100,
 };
 
-const DEFAULT_RELIABILITY = 0.7;
+const DEFAULT_RELIABILITY = 0.65;
 
 // Scale m values based on movie age - older films naturally have fewer reviews
 function getAgeMultiplier(year: number | undefined): number {
@@ -48,27 +48,31 @@ export function computeAdjustedScore(
 
 // Baselines (C_i) - fixed priors for Bayesian shrinkage
 const BASELINES: Record<string, number> = {
-  imdb: 65,
+  imdb: 64,
   letterboxd: 65,
-  rotten_tomatoes_audience: 75,
-  douban: 70,
-  metacritic: 60,
-  rotten_tomatoes_all: 70,
-  rotten_tomatoes_top: 60,
-  mubi: 75,
+  rotten_tomatoes_audience: 70,
+  douban: 65,
+  metacritic: 55,
+  rotten_tomatoes_all: 65,
+  rotten_tomatoes_top: 55,
+  mubi: 70,
 };
 
 // Weights (w_i) - sum to 1.0
 const WEIGHTS: Record<string, number> = {
   metacritic: 0.18,
-  letterboxd: 0.11,
-  imdb: 0.11,
+  letterboxd: 0.14,
+  imdb: 0.1,
   rotten_tomatoes_top: 0.16,
-  douban: 0.12,
-  rotten_tomatoes_audience: 0.07,
-  mubi: 0.12,
+  douban: 0.11,
+  rotten_tomatoes_audience: 0.08,
+  mubi: 0.1,
   rotten_tomatoes_all: 0.13,
 };
+
+// Minimum sources required for a verdict
+// Mubi (cinephile) and Douban (Chinese) are often unavailable - allow up to 2 missing
+const MIN_SOURCES_FOR_VERDICT = 6;
 
 export function computeOverallScore(
   scores: SourceScore[],
@@ -79,7 +83,8 @@ export function computeOverallScore(
     (s) => s.normalized != null && WEIGHTS[s.source] != null
   ) as Array<SourceScore & { normalized: number }>;
 
-  if (valid.length === 0) return null;
+  // No verdict if 2+ sources are missing (e.g., Mubi missing is OK, but not 2+)
+  if (valid.length < MIN_SOURCES_FOR_VERDICT) return null;
 
   // Compute per-metric values
   const metrics = valid.map((s) => {
