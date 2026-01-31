@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, KeyboardEvent, memo, useReducer } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent, memo, useReducer, SyntheticEvent } from 'react';
 import styles from './page.module.css';
 import type { ScorePayload, SourceScore } from '@/lib/types';
 
@@ -40,6 +40,50 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
 function formatScore(val: number | null) {
   return val == null ? '—' : Math.round(val).toString();
 }
+
+type PosterProps = {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  className?: string;
+  skeletonClassName?: string;
+};
+
+const Poster = memo(function Poster({ src, alt, width, height, className, skeletonClassName }: PosterProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  const handleLoad = (e: SyntheticEvent<HTMLImageElement>) => {
+    // Small delay for smoother transition
+    requestAnimationFrame(() => setLoaded(true));
+  };
+
+  return (
+    <div className={styles.posterContainer} style={{ width, height }}>
+      {!loaded && !error && (
+        <div className={`${styles.posterSkeleton} ${skeletonClassName || ''}`} />
+      )}
+      {!error && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          className={`${className || ''} ${loaded ? styles.posterLoaded : styles.posterLoading}`}
+          onLoad={handleLoad}
+          onError={() => setError(true)}
+        />
+      )}
+      {error && (
+        <div className={styles.posterError}>
+          <span>Unable to load</span>
+        </div>
+      )}
+    </div>
+  );
+});
 
 const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
   return (
@@ -332,13 +376,13 @@ export default function Home() {
                     onMouseEnter={() => setHighlightedIndex(index)}
                   >
                     {movie.poster ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Poster
                         src={movie.poster}
                         alt=""
-                        className={styles.dropdownPoster}
                         width={56}
                         height={84}
+                        className={styles.dropdownPoster}
+                        skeletonClassName={styles.dropdownPosterSkeleton}
                       />
                     ) : (
                       <div className={styles.dropdownPosterEmpty} />
@@ -375,13 +419,13 @@ export default function Home() {
           <div className={styles.movieHeader}>
             <div className={styles.posterWrapper}>
               {data.movie.poster ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Poster
                   src={data.movie.poster}
                   alt={data.movie.title}
-                  className={styles.poster}
                   width={360}
                   height={540}
+                  className={styles.poster}
+                  skeletonClassName={styles.posterSkeletonLarge}
                 />
               ) : (
                 <div className={styles.posterPlaceholder}>No poster</div>

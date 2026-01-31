@@ -233,6 +233,64 @@
   color: #fff;
 }
 
+/* Poster Loading System */
+.posterContainer {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.posterSkeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    #1a1a1a 0%,
+    #1a1a1a 40%,
+    #252525 50%,
+    #1a1a1a 60%,
+    #1a1a1a 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.posterLoading {
+  opacity: 0;
+}
+
+.posterLoaded {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.posterError {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a1a 0%, #141414 100%);
+  color: #444;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dropdownPosterSkeleton {
+  border-radius: 4px;
+}
+
 .dropdownPoster {
   width: 56px;
   height: 84px;
@@ -240,7 +298,7 @@
   border-radius: 4px;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.4s ease;
 }
 
 .dropdownPosterEmpty {
@@ -374,6 +432,17 @@
   }
 }
 
+.posterSkeletonLarge {
+  border-radius: 0;
+}
+
+.posterWrapper .posterContainer {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2/3;
+  border-radius: 0;
+}
+
 .poster {
   width: 100%;
   aspect-ratio: 2/3;
@@ -381,6 +450,7 @@
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: opacity 0.5s ease;
 }
 
 .posterPlaceholder {
@@ -695,6 +765,15 @@
   }
 
   .dropdownItem {
+    transition: none;
+  }
+
+  .posterSkeleton {
+    animation: none;
+    background: #1a1a1a;
+  }
+
+  .posterLoaded {
     transition: none;
   }
 }
