@@ -86,14 +86,6 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
   };
 }
 
-// Mubi slug fallback: lowercase, replace non-alphanumeric with hyphens
-function slugifyForMubi(title: string) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 // Letterboxd slug fallback: title-year format (e.g., "the-wrecking-crew-2026")
 function slugifyForLetterboxd(title: string, year?: string) {
   const titleSlug = title
@@ -163,7 +155,7 @@ async function fetchRottenTomatoes(
   fallbackValue?: number | null,
 ): Promise<SourceScore[]> {
   // Wikidata P1258 may include the "m/" prefix, strip it if present
-  let slug = ctx.wikidata.rottenTomatoes?.replace(/^m\//, '') || slugifyTitle(ctx.movie.title);
+  const slug = ctx.wikidata.rottenTomatoes?.replace(/^m\//, '') || slugifyTitle(ctx.movie.title);
   try {
     const apiUrl = `https://www.rottentomatoes.com/napi/movie/${slug}`;
     const json = await fetchJson<{ meterScore?: number }>(apiUrl, {

@@ -54,7 +54,7 @@ const Poster = memo(function Poster({ src, alt, width, height, className, skelet
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  const handleLoad = (e: SyntheticEvent<HTMLImageElement>) => {
+  const handleLoad = (_e: SyntheticEvent<HTMLImageElement>) => {
     // Small delay for smoother transition
     requestAnimationFrame(() => setLoaded(true));
   };
@@ -190,6 +190,7 @@ export default function Home() {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [searchLoading, setSearchLoading] = useState(false);
   const [fetchState, dispatch] = useReducer(fetchReducer, { status: 'idle' });
+  const [lastTmdbId, setLastTmdbId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listboxRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -301,6 +302,7 @@ export default function Home() {
   };
 
   const fetchScores = async (tmdbId: number) => {
+    setLastTmdbId(tmdbId);
     dispatch({ type: 'FETCH_START' });
     setShowDropdown(false);
     try {
@@ -416,7 +418,20 @@ export default function Home() {
           ) : null}
         </div>
 
-        {error ? <div className={styles.error}>{error}</div> : null}
+        {error ? (
+          <div className={styles.errorWrapper}>
+            <div className={styles.error}>{error}</div>
+            {lastTmdbId && (
+              <button
+                type="button"
+                className={styles.retryBtn}
+                onClick={() => fetchScores(lastTmdbId)}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className={styles.loadingWrapper}>

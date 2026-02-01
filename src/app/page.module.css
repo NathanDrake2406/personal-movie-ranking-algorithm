@@ -388,14 +388,44 @@
   to { opacity: 1; }
 }
 
+.errorWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
 .error {
   max-width: 480px;
-  margin: 20px auto 0;
   padding: 16px;
   background: rgba(200, 50, 50, 0.15);
   border-left: 4px solid #c44;
   color: #f99;
   font-size: 14px;
+}
+
+.retryBtn {
+  padding: 12px 24px;
+  border: 1px solid #555;
+  background: transparent;
+  color: #e8e8e8;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.retryBtn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #888;
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid #f0c040;
+  outline-offset: 2px;
 }
 
 /* Results Section */
