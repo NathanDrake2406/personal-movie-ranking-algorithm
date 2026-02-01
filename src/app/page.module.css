@@ -39,12 +39,11 @@
 
 .headline {
   font-family: 'Source Serif 4', serif;
-  font-size: clamp(36px, 7vw, 80px);
+  font-size: clamp(28px, 7vw, 80px);
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.1;
   margin: 0 0 24px 0;
   letter-spacing: -0.02em;
-  white-space: nowrap;
 }
 
 .subhead {
@@ -742,8 +741,30 @@
     font-size: 40px;
   }
 
+  .rtMainValue {
+    font-size: 40px;
+  }
+
   .scoresGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .movieHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .movieInfo {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 }
 
