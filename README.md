@@ -28,7 +28,7 @@ npm run dev
   - Rotten Tomatoes: Verified audience preferred, falls back to all audience
   - Metacritic, Letterboxd, Mubi, Douban: HTML scrape with Wikidata slugs
 - **Normalization:** Each score mapped to 0–100 in `src/lib/normalize.ts`
-- **Scoring:** Weighted average with reliability adjustment based on vote count, disagreement penalty
+- **Scoring:** Bloc-based weighted average (Mainstream 20%, Cinephiles 35%, Critics 45%)
 - **API:** POST `/api/score` with `{ title }` → movie metadata, per-source scores, composite
 - **Caching:** In-memory 5-minute cache per IMDb ID
 
