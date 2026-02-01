@@ -139,6 +139,32 @@
   animation: spin 0.8s linear infinite;
 }
 
+.clearBtn {
+  position: absolute;
+  right: 12px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #888;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.clearBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ccc;
+}
+
+.clearBtn:focus-visible {
+  outline: 2px solid #f0c040;
+  outline-offset: 2px;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

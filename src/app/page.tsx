@@ -376,7 +376,22 @@ export default function Home() {
               aria-controls="search-listbox"
               aria-activedescendant={highlightedIndex >= 0 ? `option-${suggestions[highlightedIndex]?.id}` : undefined}
             />
-            {searchLoading ? <span className={styles.inputSpinner} /> : null}
+            {searchLoading && <span className={styles.inputSpinner} />}
+            {query && !searchLoading && (
+              <button
+                type="button"
+                className={styles.clearBtn}
+                onClick={() => {
+                  setQuery('');
+                  setSuggestions([]);
+                  setShowDropdown(false);
+                  inputRef.current?.focus();
+                }}
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           {showDropdown && suggestions.length > 0 ? (
