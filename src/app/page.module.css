@@ -5,7 +5,6 @@
   background: #0d0d0d;
   color: #e8e8e8;
   font-family: 'DM Sans', sans-serif;
-  overflow-x: hidden;
 }
 
 .masthead {
@@ -36,17 +35,16 @@
   align-items: center;
   padding: 80px 24px 60px;
   text-align: center;
-  overflow-x: hidden;
 }
 
 .headline {
   font-family: 'Source Serif 4', serif;
-  font-size: clamp(28px, 7vw, 80px);
+  font-size: clamp(36px, 7vw, 80px);
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1;
   margin: 0 0 24px 0;
   letter-spacing: -0.02em;
-  text-wrap: balance;
+  white-space: nowrap;
 }
 
 .subhead {
@@ -66,8 +64,6 @@
 
 .searchInput {
   flex: 1;
-  min-width: 0;
-  width: 100%;
   padding: 18px 20px;
   border: none;
   background: transparent;
@@ -131,8 +127,6 @@
   align-items: center;
   border: 1px solid #555;
   background: rgba(255, 255, 255, 0.03);
-  min-height: 56px;
-  width: 100%;
 }
 
 .inputSpinner {
@@ -748,134 +742,8 @@
     font-size: 40px;
   }
 
-  .rtMainValue {
-    font-size: 40px;
-  }
-
   .scoresGrid {
     grid-template-columns: 1fr;
-  }
-}
-
-/* Small phones */
-@media (max-width: 520px) {
-  .hero {
-    padding: 32px 16px 32px;
-  }
-
-  .subhead {
-    font-size: 15px;
-    margin-bottom: 32px;
-  }
-
-  .subhead br {
-    display: none;
-  }
-
-  .searchWrapper {
-    width: 100%;
-    max-width: none;
-  }
-
-  .inputWrapper {
-    min-height: 52px;
-    border-color: #666;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .searchInput {
-    padding: 16px;
-    font-size: 16px;
-  }
-
-  .results {
-    padding: 0 16px 60px;
-  }
-
-  .movieHeader {
-    grid-template-columns: 1fr;
-    gap: 24px;
-    text-align: center;
-  }
-
-  .posterWrapper {
-    max-width: 240px;
-    margin: 0 auto;
-  }
-
-  .movieInfo {
-    align-items: center;
-  }
-
-  .movieTitle {
-    font-size: 28px;
-  }
-
-  .movieMeta {
-    font-size: 14px;
-    margin-bottom: 24px;
-  }
-
-  .verdictBox {
-    padding: 16px 20px;
-  }
-
-  .verdictLabel {
-    font-size: 12px;
-  }
-
-  .verdictScore {
-    font-size: 36px;
-  }
-
-  .scoresTitle {
-    font-size: 18px;
-    padding: 16px 0;
-    margin-bottom: 24px;
-  }
-
-  .scoreCard {
-    padding: 24px 20px;
-  }
-
-  .scoreSource {
-    font-size: 18px;
-  }
-
-  .scoreValue {
-    font-size: 36px;
-  }
-
-  .rtMainScores {
-    gap: 16px;
-  }
-
-  .rtMainValue {
-    font-size: 36px;
-  }
-
-  .rtMainLabel {
-    font-size: 11px;
-  }
-
-  .rtSubScores {
-    gap: 16px;
-  }
-
-  .rtSubValue {
-    font-size: 22px;
-  }
-
-  .rtSubLabel {
-    font-size: 9px;
-  }
-
-  .dropdownTitle {
-    font-size: 17px;
-  }
-
-  .dropdownYear {
-    font-size: 13px;
   }
 }
 
