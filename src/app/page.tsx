@@ -200,7 +200,7 @@ export default function Home() {
   const error = fetchState.status === 'error' ? fetchState.error : null;
   const data = fetchState.status === 'success' ? fetchState.data : null;
 
-  // Debounced search for suggestions
+  // Debounced search for suggestions with request cancellation
   useEffect(() => {
     if (justSelected.current) {
       justSelected.current = false;
@@ -214,22 +214,34 @@ export default function Home() {
       return;
     }
 
+    const abortController = new AbortController();
+
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: abortController.signal,
+        });
         const json = await res.json();
         setSuggestions(json.results || []);
         setShowDropdown(true);
         setHighlightedIndex(-1);
-      } catch {
-        setSuggestions([]);
+      } catch (err) {
+        // Ignore aborted requests
+        if ((err as Error).name !== 'AbortError') {
+          setSuggestions([]);
+        }
       } finally {
-        setSearchLoading(false);
+        if (!abortController.signal.aborted) {
+          setSearchLoading(false);
+        }
       }
-    }, 150);
+    }, 200); // Slightly longer debounce
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
   }, [query]);
 
   // Close dropdown on outside click

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getApiKeys } from '@/lib/config';
+import { parseQuery, rankResults, type SearchResult } from '@/lib/search-utils';
 
 type TMDBSearchResult = {
   results: Array<{
@@ -10,6 +11,17 @@ type TMDBSearchResult = {
     popularity?: number;
   }>;
 };
+
+async function fetchTMDB(tmdbKey: string, searchTitle: string, year: number | null): Promise<TMDBSearchResult> {
+  let url = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(searchTitle)}&page=1`;
+
+  if (year) {
+    url += `&primary_release_year=${year}`;
+  }
+
+  const res = await fetch(url);
+  return res.json();
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -28,22 +40,40 @@ export async function GET(request: Request) {
   }
 
   try {
-    const res = await fetch(
-      `https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(query)}&page=1`,
-    );
-    const data: TMDBSearchResult = await res.json();
+    // Parse query to extract year
+    const { title: searchTitle, year } = parseQuery(query);
 
-    // Sort by popularity (most popular first) before taking top 10
-    const sorted = [...data.results].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+    // Fetch with year filter if present
+    let data = await fetchTMDB(tmdbKey, searchTitle, year);
 
-    const results = sorted.slice(0, 10).map((movie) => ({
+    // Fallback: if year filter returns empty, retry without year
+    if (year && data.results.length === 0) {
+      data = await fetchTMDB(tmdbKey, searchTitle, null);
+    }
+
+    // Convert to SearchResult format for ranking
+    const searchResults: SearchResult[] = data.results.map((movie) => ({
       id: movie.id,
       title: movie.title,
-      year: movie.release_date?.split('-')[0] || null,
-      poster: movie.poster_path
-        ? `https://image.tmdb.org/t/p/w92${movie.poster_path}`
-        : null,
+      release_date: movie.release_date,
+      popularity: movie.popularity,
     }));
+
+    // Re-rank results using smart ranking
+    const ranked = rankResults(searchResults, searchTitle, year);
+
+    // Map to response format
+    const results = ranked.slice(0, 10).map((movie) => {
+      const original = data.results.find((m) => m.id === movie.id)!;
+      return {
+        id: movie.id,
+        title: movie.title,
+        year: movie.release_date?.split('-')[0] || null,
+        poster: original.poster_path
+          ? `https://image.tmdb.org/t/p/w92${original.poster_path}`
+          : null,
+      };
+    });
 
     return NextResponse.json({ results });
   } catch (err) {
