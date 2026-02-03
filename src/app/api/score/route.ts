@@ -17,10 +17,12 @@ export async function POST(request: Request) {
       TMDB_API_KEY: process.env.TMDB_API_KEY,
     };
 
-    // Ensure we have at least fallback keys
-    const { tmdbKey, omdbKey } = getApiKeys(env);
-    if (!tmdbKey || !omdbKey) {
-      return NextResponse.json({ error: 'API keys not configured' }, { status: 500 });
+    const { tmdbKey } = getApiKeys(env);
+    if (!tmdbKey) {
+      return NextResponse.json(
+        { error: 'TMDB_API_KEY environment variable is required' },
+        { status: 500 }
+      );
     }
 
     const { movie } = await resolveByTmdbId(tmdbId, env);

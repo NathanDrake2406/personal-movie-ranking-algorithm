@@ -59,14 +59,18 @@ describe('runFetchers', () => {
     expect(res.sources.length).toBeGreaterThan(0);
   });
 
-  it('falls back to bundled keys when env missing and still returns scores', async () => {
+  it('returns other sources when OMDB key is missing', async () => {
     const res = await runFetchers({
       ...baseCtx,
       movie: { ...baseCtx.movie, imdbId: 'tt2' },
       env: { OMDB_API_KEY: undefined },
     });
-    const imdb = res.sources.find((s) => s.source === 'imdb');
-    expect(imdb?.normalized).toBeCloseTo(88, 0);
+    // Without OMDB key, IMDb score won't be fetched via OMDB
+    // but other sources (letterboxd, mubi, douban) should still work
+    const lb = res.sources.find((s) => s.source === 'letterboxd');
+    expect(lb?.normalized).toBeCloseTo(82);
+    const mubi = res.sources.find((s) => s.source === 'mubi');
+    expect(mubi?.normalized).toBeCloseTo(85);
   });
 
   it('uses OMDb fallbacks when RT/Metacritic slugs missing', async () => {
