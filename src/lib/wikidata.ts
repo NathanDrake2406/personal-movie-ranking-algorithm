@@ -29,7 +29,7 @@ export async function fetchWikidataIds(imdbId: string): Promise<WikidataIds> {
   const url = `${ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
   const data = await fetchJson<SparqlResponse>(url, {
     headers: {
-      'user-agent': 'movies-ranking/0.1 (https://example.com)',
+      'user-agent': 'movies-ranking/1.0 (+https://movies-ranking-rho.vercel.app)',
       accept: 'application/sparql-results+json',
     },
   });

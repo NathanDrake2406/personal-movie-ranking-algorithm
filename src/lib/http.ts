@@ -13,7 +13,7 @@ export async function fetchWithTimeout(
       signal: controller.signal,
       headers: {
         'user-agent':
-          'movies-ranking/0.1 (+https://example.com; contact: dev@example.com)',
+          'movies-ranking/1.0 (+https://movies-ranking-rho.vercel.app; contact@example.com)',
         ...(init.headers || {}),
       },
     });
