@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getApiKeys } from '@/lib/config';
 import { parseQuery, rankResults, type SearchResult } from '@/lib/search-utils';
+import { fetchJson } from '@/lib/http';
 
 type TMDBSearchResult = {
   results: Array<{
@@ -19,8 +20,7 @@ async function fetchTMDB(tmdbKey: string, searchTitle: string, year: number | nu
     url += `&primary_release_year=${year}`;
   }
 
-  const res = await fetch(url);
-  return res.json();
+  return fetchJson<TMDBSearchResult>(url, {}, 5000);
 }
 
 export async function GET(request: Request) {

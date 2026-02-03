@@ -25,6 +25,7 @@ describe('GET /api/search', () => {
 
   function mockFetch(results: Array<{ id: number; title: string; release_date?: string; popularity?: number }>) {
     global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
       json: () => Promise.resolve({ results }),
     });
   }
@@ -41,6 +42,7 @@ describe('GET /api/search', () => {
     // Verify TMDB was called with primary_release_year
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('primary_release_year=2021'),
+      expect.any(Object),
     );
   });
 
@@ -81,6 +83,7 @@ describe('GET /api/search', () => {
     // Should NOT have primary_release_year=2001
     expect(global.fetch).not.toHaveBeenCalledWith(
       expect.stringContaining('primary_release_year='),
+      expect.any(Object),
     );
   });
 
@@ -101,9 +104,10 @@ describe('GET /api/search', () => {
     global.fetch = vi.fn().mockImplementation(() => {
       callCount++;
       if (callCount === 1) {
-        return Promise.resolve({ json: () => Promise.resolve({ results: [] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
       }
       return Promise.resolve({
+        ok: true,
         json: () => Promise.resolve({
           results: [{ id: 1, title: 'Dune', release_date: '2021-10-22', popularity: 100 }],
         }),
