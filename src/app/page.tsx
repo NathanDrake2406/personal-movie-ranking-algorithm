@@ -372,6 +372,7 @@ export default function Home() {
               autoComplete="off"
               aria-label="Search for a film"
               role="combobox"
+              aria-autocomplete="list"
               aria-expanded={showDropdown && suggestions.length > 0}
               aria-controls="search-listbox"
               aria-activedescendant={highlightedIndex >= 0 ? `option-${suggestions[highlightedIndex]?.id}` : undefined}
