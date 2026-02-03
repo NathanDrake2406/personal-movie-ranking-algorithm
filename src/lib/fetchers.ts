@@ -746,4 +746,4 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   return payload;
 }
 
-const scoreCache = new MemoryCache<ScorePayload>(5 * 60 * 1000); // 5 minutes
+const scoreCache = new MemoryCache<ScorePayload>(5 * 60 * 1000, 500); // 5 min TTL, 500 max
