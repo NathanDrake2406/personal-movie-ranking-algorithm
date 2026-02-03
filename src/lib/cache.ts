@@ -33,7 +33,8 @@ export class LRUCache<T> {
     // Evict oldest if at capacity
     while (this.store.size >= this.maxSize) {
       const oldestKey = this.store.keys().next().value;
-      if (oldestKey) this.store.delete(oldestKey);
+      if (oldestKey !== undefined) this.store.delete(oldestKey);
+      else break;
     }
 
     this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });

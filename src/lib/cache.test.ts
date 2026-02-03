@@ -57,4 +57,15 @@ describe('LRUCache', () => {
     expect(cache.get('a')).toBe('1');
     expect(cache.get('b')).toBeNull();
   });
+
+  it('handles empty string keys without hanging', () => {
+    const cache = new LRUCache<string>(10000, 2);
+    cache.set('', 'empty-key-value');
+    cache.set('a', '1');
+    cache.set('b', '2'); // should evict '' (oldest)
+
+    expect(cache.get('')).toBeNull();
+    expect(cache.get('a')).toBe('1');
+    expect(cache.get('b')).toBe('2');
+  });
 });
