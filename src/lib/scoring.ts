@@ -4,7 +4,7 @@ import type { SourceScore, OverallScore } from './types';
  * Simple bloc-based weighted scoring algorithm.
  *
  * Three blocs with shares of final score:
- *   - Popular (20%): IMDb 30%, Douban 35%, RT Audience 35%
+ *   - Popular (20%): IMDb 40%, RT Audience 45%, Douban 15%
  *   - Cinephile (35%): Letterboxd 80%, Mubi 20%
  *   - Critical (45%): Metacritic 40%, RT Top Critics 40%, RT All Critics 20%
  *
@@ -14,9 +14,9 @@ import type { SourceScore, OverallScore } from './types';
 // Absolute weights (bloc share × within-bloc weight)
 const WEIGHTS: Record<string, number> = {
   // Popular bloc (20%)
-  imdb: 0.2 * 0.3, // 0.06
-  douban: 0.2 * 0.35, // 0.07
-  rotten_tomatoes_audience: 0.2 * 0.35, // 0.07
+  imdb: 0.2 * 0.4, // 0.08
+  douban: 0.2 * 0.15, // 0.03
+  rotten_tomatoes_audience: 0.2 * 0.45, // 0.09
 
   // Cinephile bloc (35%)
   letterboxd: 0.35 * 0.8, // 0.28
