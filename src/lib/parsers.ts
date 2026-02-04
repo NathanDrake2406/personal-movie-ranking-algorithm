@@ -15,3 +15,13 @@ export function parseLetterboxdHtml(html: string): ParsedRating {
 
   return { value: Number.isFinite(value) ? value : null, count };
 }
+
+export function parseMubiHtml(html: string): ParsedRating {
+  const ratingMatch = html.match(/Average rating:\s*([\d.]+)\/10/);
+  const countMatch = html.match(/out of\s+([\d,]+)\s*ratings/i);
+
+  const value = ratingMatch?.[1] ? parseFloat(ratingMatch[1]) : null;
+  const count = countMatch?.[1] ? parseInt(countMatch[1].replace(/,/g, ''), 10) : null;
+
+  return { value: Number.isFinite(value) ? value : null, count };
+}
