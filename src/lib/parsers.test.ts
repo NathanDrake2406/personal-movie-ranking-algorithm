@@ -2,7 +2,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseLetterboxdHtml,
-  parseMubiHtml,
   parseImdbHtml,
   parseMetacriticHtml,
   parseDoubanSubjectSearchHtml,
@@ -11,6 +10,7 @@ import {
   parseRTApiResponse,
   parseRTCriticsHtml,
   parseRTAudienceHtml,
+  parseAllocineHtml,
 } from './parsers';
 
 describe('parsers', () => {
@@ -29,25 +29,43 @@ describe('parsers', () => {
     });
   });
 
-  describe('parseMubiHtml', () => {
-    it('extracts rating from meta description', () => {
-      const html = 'Average rating: 8.5/10 out of 12,345 ratings';
-      const result = parseMubiHtml(html);
-      expect(result.value).toBe(8.5);
-      expect(result.count).toBe(12345);
+  describe('parseAllocineHtml', () => {
+    it('extracts both press and user ratings', () => {
+      const html = `
+        <div>Presse</div>
+        <span class="stareval-note">3,8</span>
+        <span class="stareval-note">4,2</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBe(3.8);
+      expect(result.user.value).toBe(4.2);
     });
 
-    it('handles ratings without count', () => {
-      const html = 'Average rating: 7.2/10';
-      const result = parseMubiHtml(html);
-      expect(result.value).toBe(7.2);
-      expect(result.count).toBeNull();
+    it('extracts user rating only when no press section', () => {
+      const html = `
+        <span class="stareval-note">4,5</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBeNull();
+      expect(result.user.value).toBe(4.5);
     });
 
-    it('returns null for page without rating', () => {
+    it('handles > Presse < with spaces', () => {
+      const html = `
+        <div>> Presse <</div>
+        <span class="stareval-note">2,9</span>
+        <span class="stareval-note">3,1</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBe(2.9);
+      expect(result.user.value).toBe(3.1);
+    });
+
+    it('returns nulls for page without ratings', () => {
       const html = '<html>No ratings</html>';
-      const result = parseMubiHtml(html);
-      expect(result.value).toBeNull();
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBeNull();
+      expect(result.user.value).toBeNull();
     });
   });
 

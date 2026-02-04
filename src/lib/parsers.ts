@@ -16,14 +16,37 @@ export function parseLetterboxdHtml(html: string): ParsedRating {
   return { value: Number.isFinite(value) ? value : null, count };
 }
 
-export function parseMubiHtml(html: string): ParsedRating {
-  const ratingMatch = html.match(/Average rating:\s*([\d.]+)\/10/);
-  const countMatch = html.match(/out of\s+([\d,]+)\s*ratings/i);
+// AlloCiné HTML parser
+export type ParsedAllocineRatings = {
+  press: ParsedRating;
+  user: ParsedRating;
+};
 
-  const value = ratingMatch?.[1] ? parseFloat(ratingMatch[1]) : null;
-  const count = countMatch?.[1] ? parseInt(countMatch[1].replace(/,/g, ''), 10) : null;
+export function parseAllocineHtml(html: string): ParsedAllocineRatings {
+  // Find all .stareval-note values
+  const noteMatches = [...html.matchAll(/class="stareval-note"[^>]*>([^<]+)</g)];
 
-  return { value: Number.isFinite(value) ? value : null, count };
+  // Check if "Presse" section exists (indicates first rating is press)
+  const hasPress = html.includes('> Presse <') || html.includes('>Presse<');
+
+  const parseNote = (text?: string): number | null => {
+    if (!text) return null;
+    const num = parseFloat(text.replace(',', '.').trim());
+    return Number.isFinite(num) ? num : null;
+  };
+
+  if (hasPress && noteMatches.length >= 2) {
+    return {
+      press: { value: parseNote(noteMatches[0]?.[1]), count: null },
+      user: { value: parseNote(noteMatches[1]?.[1]), count: null },
+    };
+  }
+
+  // No press section - first rating is user only
+  return {
+    press: { value: null, count: null },
+    user: { value: parseNote(noteMatches[0]?.[1]), count: null },
+  };
 }
 
 export function parseImdbHtml(html: string): ParsedRating {
