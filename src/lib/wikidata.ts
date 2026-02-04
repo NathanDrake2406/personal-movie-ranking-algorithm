@@ -8,22 +8,24 @@ type SparqlResponse = {
       mc?: { value: string };
       lb?: { value: string };
       db?: { value: string };
-      mubi?: { value: string };
+      allocineFilm?: { value: string };
+      allocineSeries?: { value: string };
     }>;
   };
 };
 
 const ENDPOINT = 'https://query.wikidata.org/sparql';
 
-// Looks up Wikidata entity by IMDb ID (P345) and returns RT (P1258), Metacritic (P1712), Letterboxd (P6127), Douban (P4529), and Mubi (P7299) slugs/IDs.
+// Looks up Wikidata entity by IMDb ID (P345) and returns platform IDs
 export async function fetchWikidataIds(imdbId: string): Promise<WikidataIds> {
-  const query = `SELECT ?rt ?mc ?lb ?db ?mubi WHERE {
+  const query = `SELECT ?rt ?mc ?lb ?db ?allocineFilm ?allocineSeries WHERE {
     ?item wdt:P345 "${imdbId}" .
     OPTIONAL { ?item wdt:P1258 ?rt }
     OPTIONAL { ?item wdt:P1712 ?mc }
     OPTIONAL { ?item wdt:P6127 ?lb }
     OPTIONAL { ?item wdt:P4529 ?db }
-    OPTIONAL { ?item wdt:P7299 ?mubi }
+    OPTIONAL { ?item wdt:P1265 ?allocineFilm }
+    OPTIONAL { ?item wdt:P1267 ?allocineSeries }
   } LIMIT 1`;
 
   const url = `${ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
@@ -40,6 +42,7 @@ export async function fetchWikidataIds(imdbId: string): Promise<WikidataIds> {
     metacritic: hit?.mc?.value,
     letterboxd: hit?.lb?.value,
     douban: hit?.db?.value,
-    mubi: hit?.mubi?.value,
+    allocineFilm: hit?.allocineFilm?.value,
+    allocineSeries: hit?.allocineSeries?.value,
   };
 }
