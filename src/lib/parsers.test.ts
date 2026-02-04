@@ -8,6 +8,9 @@ import {
   parseDoubanSubjectSearchHtml,
   parseDoubanGlobalSearchHtml,
   parseGoogleDoubanSearchHtml,
+  parseRTApiResponse,
+  parseRTCriticsHtml,
+  parseRTAudienceHtml,
 } from './parsers';
 
 describe('parsers', () => {
@@ -126,6 +129,67 @@ describe('parsers', () => {
       it('returns null when no Douban link found', () => {
         expect(parseGoogleDoubanSearchHtml('<html>No results</html>')).toBeNull();
       });
+    });
+  });
+
+  describe('parseRTApiResponse', () => {
+    it('extracts meterScore', () => {
+      expect(parseRTApiResponse({ meterScore: 86 }).tomatometer).toBe(86);
+    });
+
+    it('returns null for missing meterScore', () => {
+      expect(parseRTApiResponse({}).tomatometer).toBeNull();
+    });
+  });
+
+  describe('parseRTCriticsHtml', () => {
+    it('extracts all critic scores', () => {
+      const html = '"criticsAll":{"score":"92","averageRating":"8.1","ratingCount":245},"criticsTop":{"averageRating":"7.9","ratingCount":52}';
+      const result = parseRTCriticsHtml(html);
+      expect(result.tomatometer).toBe(92);
+      expect(result.criticsAvgAll).toBeCloseTo(81);
+      expect(result.criticsAvgTop).toBeCloseTo(79);
+      expect(result.allCriticsCount).toBe(245);
+      expect(result.topCriticsCount).toBe(52);
+    });
+
+    it('handles missing top critics', () => {
+      const html = '"criticsAll":{"score":"75","averageRating":"6.5","ratingCount":100}';
+      const result = parseRTCriticsHtml(html);
+      expect(result.tomatometer).toBe(75);
+      expect(result.criticsAvgTop).toBeNull();
+    });
+
+    it('returns nulls for page without critic data', () => {
+      const html = '<html>No critic data</html>';
+      const result = parseRTCriticsHtml(html);
+      expect(result.tomatometer).toBeNull();
+      expect(result.criticsAvgAll).toBeNull();
+    });
+  });
+
+  describe('parseRTAudienceHtml', () => {
+    it('extracts verified audience score', () => {
+      const html = '"audienceVerified":{"averageRating":"4.2","reviewCount":10000},"audienceAll":{"averageRating":"3.8"}';
+      const result = parseRTAudienceHtml(html);
+      expect(result.audienceAvg).toBe(4.2);
+      expect(result.isVerifiedAudience).toBe(true);
+      expect(result.audienceCount).toBe(10000);
+    });
+
+    it('falls back to audienceAll', () => {
+      const html = '"audienceAll":{"averageRating":"3.5","reviewCount":5000}';
+      const result = parseRTAudienceHtml(html);
+      expect(result.audienceAvg).toBe(3.5);
+      expect(result.isVerifiedAudience).toBe(false);
+      expect(result.audienceCount).toBe(5000);
+    });
+
+    it('returns nulls for page without audience data', () => {
+      const html = '<html>No audience data</html>';
+      const result = parseRTAudienceHtml(html);
+      expect(result.audienceAvg).toBeNull();
+      expect(result.isVerifiedAudience).toBe(false);
     });
   });
 });

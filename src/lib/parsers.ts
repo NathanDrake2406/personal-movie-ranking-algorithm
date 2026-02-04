@@ -80,3 +80,57 @@ export function parseGoogleDoubanSearchHtml(html: string): string | null {
   const match = html.match(/movie\.douban\.com\/subject\/(\d+)/);
   return match?.[1] ?? null;
 }
+
+// RT API response parser
+export function parseRTApiResponse(json: { meterScore?: number }): { tomatometer: number | null } {
+  return { tomatometer: json.meterScore ?? null };
+}
+
+// RT Critics HTML parser
+export type ParsedRTCritics = {
+  tomatometer: number | null;
+  criticsAvgAll: number | null;
+  criticsAvgTop: number | null;
+  allCriticsCount: number | null;
+  topCriticsCount: number | null;
+};
+
+export function parseRTCriticsHtml(html: string): ParsedRTCritics {
+  const matchScore = html.match(/"criticsAll"[^}]*"score"\s*:\s*"(\d+)"/);
+  const matchAll = html.match(/"criticsAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
+  const matchTop = html.match(/"criticsTop"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
+  const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
+  const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
+
+  return {
+    tomatometer: matchScore?.[1] ? Number(matchScore[1]) : null,
+    criticsAvgAll: matchAll?.[1] ? Number(matchAll[1]) * 10 : null,
+    criticsAvgTop: matchTop?.[1] ? Number(matchTop[1]) * 10 : null,
+    allCriticsCount: matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null,
+    topCriticsCount: matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null,
+  };
+}
+
+// RT Audience HTML parser
+export type ParsedRTAudience = {
+  audienceAvg: number | null;
+  isVerifiedAudience: boolean;
+  audienceCount: number | null;
+};
+
+export function parseRTAudienceHtml(html: string): ParsedRTAudience {
+  const matchVerified = html.match(/"audienceVerified"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
+  const matchAll = html.match(/"audienceAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
+  const matchVerifiedCount = html.match(/"audienceVerified"[^}]*"reviewCount"\s*:\s*(\d+)/);
+  const matchAllCount = html.match(/"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/);
+
+  const isVerifiedAudience = matchVerified?.[1] != null;
+  const audienceAvg = matchVerified?.[1]
+    ? Number(matchVerified[1])
+    : (matchAll?.[1] ? Number(matchAll[1]) : null);
+  const audienceCount = isVerifiedAudience
+    ? (matchVerifiedCount?.[1] ? parseInt(matchVerifiedCount[1], 10) : null)
+    : (matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null);
+
+  return { audienceAvg, isVerifiedAudience, audienceCount };
+}
