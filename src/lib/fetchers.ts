@@ -5,6 +5,18 @@ import type { MovieInfo, ScorePayload, SourceScore, WikidataIds } from './types'
 import { MemoryCache } from './cache';
 import { getApiKeys } from './config';
 import { fetchOmdbByIdWithRotation, parseOmdbRatings } from './omdb';
+import {
+  parseImdbHtml,
+  parseMubiHtml,
+  parseLetterboxdHtml,
+  parseMetacriticHtml,
+  parseDoubanSubjectSearchHtml,
+  parseDoubanGlobalSearchHtml,
+  parseGoogleDoubanSearchHtml,
+  parseRTApiResponse,
+  parseRTCriticsHtml,
+  parseRTAudienceHtml,
+} from './parsers';
 
 type FetcherContext = {
   movie: MovieInfo;
@@ -55,26 +67,19 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
     const html = await fetchText(imdbUrl, {
       headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en-US,en;q=0.9' },
     });
-    // Extract from JSON-LD aggregateRating (fields can appear in any order)
-    const ratingBlock = html.match(/"aggregateRating":\{[^}]+\}/);
-    if (ratingBlock) {
-      const valueMatch = ratingBlock[0].match(/"ratingValue":([\d.]+)/);
-      const countMatch = ratingBlock[0].match(/"ratingCount":(\d+)/);
-      const value = valueMatch ? parseFloat(valueMatch[1]) : NaN;
-      const count = countMatch ? parseInt(countMatch[1], 10) : null;
-      if (!isNaN(value)) {
-        return {
-          score: normalizeScore({
-            source: 'imdb',
-            label: 'IMDb',
-            normalized: null,
-            raw: { value, scale: '0-10' },
-            count,
-            url: imdbUrl,
-          }),
-          fallback: {},
-        };
-      }
+    const parsed = parseImdbHtml(html);
+    if (parsed.value != null) {
+      return {
+        score: normalizeScore({
+          source: 'imdb',
+          label: 'IMDb',
+          normalized: null,
+          raw: { value: parsed.value, scale: '0-10' },
+          count: parsed.count,
+          url: imdbUrl,
+        }),
+        fallback: {},
+      };
     }
   } catch {
     // Scrape also failed
@@ -115,20 +120,15 @@ async function fetchMubi(ctx: FetcherContext): Promise<SourceScore> {
       headers: { 'user-agent': BROWSER_UA, accept: 'text/html' },
     });
 
-    // Extract "Average rating: X.X/10 out of N ratings"
-    const ratingMatch = html.match(/Average rating:\s*([\d.]+)\/10/);
-    const countMatch = html.match(/out of\s+([\d,]+)\s*ratings/i);
+    const parsed = parseMubiHtml(html);
 
-    const value = ratingMatch?.[1] ? parseFloat(ratingMatch[1]) : null;
-    const count = countMatch?.[1] ? parseInt(countMatch[1].replace(/,/g, ''), 10) : null;
-
-    if (value != null && !isNaN(value)) {
+    if (parsed.value != null) {
       return normalizeScore({
         source: 'mubi',
         label: 'Mubi',
         normalized: null,
-        raw: { value, scale: '0-10' },
-        count,
+        raw: { value: parsed.value, scale: '0-10' },
+        count: parsed.count,
         url: `https://mubi.com/en/films/${mubiId}`,
       });
     }
@@ -161,30 +161,25 @@ async function fetchRottenTomatoes(
     const json = await fetchJson<{ meterScore?: number }>(apiUrl, {
       headers: { 'user-agent': BROWSER_UA, accept: 'application/json' },
     });
-    let value = json.meterScore ?? null;
+    const apiParsed = parseRTApiResponse(json);
+    let value = apiParsed.tomatometer;
 
     let avgAll: number | null = null;
     let avgTop: number | null = null;
-
-    // If percentage missing, fall back to average rating scraped from HTML (0-10 -> convert)
     let allCriticsCount: number | null = null;
     let topCriticsCount: number | null = null;
 
+    // If percentage missing, fall back to average rating scraped from HTML
     if (value == null) {
       const html = await fetchText(`https://www.rottentomatoes.com/m/${slug}`, {
         headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
       });
-      const matchAll = html.match(/"criticsAll"[^}]*"averageRating"\\s*:\\s*"([\\d.]+)"/);
-      const matchTop = html.match(/"criticsTop"[^}]*"averageRating"\\s*:\\s*"([\\d.]+)"/);
-      if (matchAll?.[1]) avgAll = Number(matchAll[1]) * 10;
-      if (matchTop?.[1]) avgTop = Number(matchTop[1]) * 10;
+      const criticsParsed = parseRTCriticsHtml(html);
+      avgAll = criticsParsed.criticsAvgAll;
+      avgTop = criticsParsed.criticsAvgTop;
+      allCriticsCount = criticsParsed.allCriticsCount;
+      topCriticsCount = criticsParsed.topCriticsCount;
       if (avgAll != null) value = avgAll;
-
-      // Extract review counts (critics use ratingCount field)
-      const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
-      const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
-      allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
-      topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
     }
 
     const scores: SourceScore[] = [];
@@ -233,36 +228,11 @@ async function fetchRottenTomatoes(
       const html = await fetchText(`https://www.rottentomatoes.com/m/${slug}`, {
         headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
       });
-      // Extract scores from JSON embedded in HTML
-      const matchScore = html.match(/"criticsAll"[^}]*"score"\s*:\s*"(\d+)"/);
-      const matchAll = html.match(/"criticsAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-      const matchTop = html.match(/"criticsTop"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-      // Prefer verified audience (ticket-holders only) over audienceAll
-      const matchAudienceVerified = html.match(/"audienceVerified"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-      const matchAudienceAll = html.match(/"audienceAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-      const tomatometer = matchScore?.[1] ? Number(matchScore[1]) : null;
-      const avgAll = matchAll?.[1] ? Number(matchAll[1]) * 10 : null;
-      const avgTop = matchTop?.[1] ? Number(matchTop[1]) * 10 : null;
-      // Use verified audience if available, fall back to all audience
-      const audienceAvg = matchAudienceVerified?.[1]
-        ? Number(matchAudienceVerified[1])
-        : matchAudienceAll?.[1]
-          ? Number(matchAudienceAll[1])
-          : null;
-      const isVerifiedAudience = matchAudienceVerified?.[1] != null;
+      const criticsParsed = parseRTCriticsHtml(html);
+      const audienceParsed = parseRTAudienceHtml(html);
 
-      // Extract review counts from RT JSON structure
-      // audienceVerified/audienceAll uses reviewCount, critics use ratingCount
-      const matchAudienceVerifiedCount = html.match(/"audienceVerified"[^}]*"reviewCount"\s*:\s*(\d+)/);
-      const matchAudienceAllCount = html.match(/"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/);
-      const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
-      const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
-      // Use count matching the score source (verified if available, otherwise all)
-      const audienceCount = isVerifiedAudience
-        ? (matchAudienceVerifiedCount?.[1] ? parseInt(matchAudienceVerifiedCount[1], 10) : null)
-        : (matchAudienceAllCount?.[1] ? parseInt(matchAudienceAllCount[1], 10) : null);
-      const allCriticsCount = matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null;
-      const topCriticsCount = matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null;
+      const { tomatometer, criticsAvgAll: avgAll, criticsAvgTop: avgTop, allCriticsCount, topCriticsCount } = criticsParsed;
+      const { audienceAvg, isVerifiedAudience, audienceCount } = audienceParsed;
 
       if (tomatometer != null || avgAll != null || avgTop != null || audienceAvg != null) {
         const scores: SourceScore[] = [];
@@ -351,16 +321,9 @@ async function scrapeMetacritic(slug: string): Promise<{ value: number | null; c
     const html = await fetchText(`https://www.metacritic.com/movie/${slug}/`, {
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
     });
-    // Extract from HTML: title="Metascore X out of 100" and "Based on N Critic"
-    const valueMatch = html.match(/title="Metascore (\d+) out of 100"/);
-    const countMatch = html.match(/Based on (\d+) Critic/);
-    // Fallback to legacy JSON-LD format
-    const legacyValueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
-    const legacyCountMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
-    const value = valueMatch ? Number(valueMatch[1]) : (legacyValueMatch ? Number(legacyValueMatch[1]) : null);
-    const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : (legacyCountMatch?.[1] ? parseInt(legacyCountMatch[1], 10) : null);
-    if (value != null) {
-      return { value, count };
+    const parsed = parseMetacriticHtml(html);
+    if (parsed.value != null) {
+      return { value: parsed.value, count: parsed.count };
     }
     return null; // Page loaded but no score found
   } catch {
@@ -439,17 +402,13 @@ async function fetchLetterboxd(ctx: FetcherContext): Promise<SourceScore> {
     const html = await fetchText(`https://letterboxd.com/film/${slug}/`, {
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
     });
-    // Extract rating from JSON-LD structured data
-    const valueMatch = html.match(/"ratingValue"\s*:\s*([\d.]+)/);
-    const countMatch = html.match(/"ratingCount"\s*:\s*(\d+)/);
-    const value = valueMatch?.[1] ? Number(valueMatch[1]) : null;
-    const count = countMatch?.[1] ? parseInt(countMatch[1], 10) : null;
+    const parsed = parseLetterboxdHtml(html);
     return normalizeScore({
       source: 'letterboxd',
       label: 'Letterboxd',
       normalized: null,
-      raw: { value, scale: '0-5' },
-      count,
+      raw: { value: parsed.value, scale: '0-5' },
+      count: parsed.count,
       url: `https://letterboxd.com/film/${slug}/`,
     });
   } catch (err) {
@@ -522,11 +481,8 @@ async function getDoubanIdFromSubjectSearch(imdbId: string): Promise<DoubanIdRes
       { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' } },
       4000,
     );
-    const match = html.match(/subject\/(\d+)/);
-    if (match?.[1]) {
-      return { id: match[1], method: 'subject_search' };
-    }
-    return { id: null, method: 'subject_search' };
+    const id = parseDoubanSubjectSearchHtml(html);
+    return { id, method: 'subject_search' };
   } catch {
     return { id: null, method: 'subject_search' };
   }
@@ -541,17 +497,8 @@ async function getDoubanIdFromGlobalSearch(imdbId: string): Promise<DoubanIdResu
       { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' } },
       8000,
     );
-    // Look for subject ID in URL-encoded format (from onclick or href)
-    const match = html.match(/subject%2F(\d+)/);
-    if (match?.[1]) {
-      return { id: match[1], method: 'global_search' };
-    }
-    // Also try direct subject link format
-    const directMatch = html.match(/movie\.douban\.com\/subject\/(\d+)/);
-    if (directMatch?.[1]) {
-      return { id: directMatch[1], method: 'global_search' };
-    }
-    return { id: null, method: 'global_search' };
+    const id = parseDoubanGlobalSearchHtml(html);
+    return { id, method: 'global_search' };
   } catch {
     return { id: null, method: 'global_search' };
   }
@@ -565,12 +512,8 @@ async function getDoubanIdFromGoogle(imdbId: string): Promise<DoubanIdResult> {
       { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' } },
       10000,
     );
-    // Extract Douban subject ID from Google results
-    const match = html.match(/movie\.douban\.com\/subject\/(\d+)/);
-    if (match?.[1]) {
-      return { id: match[1], method: 'google' };
-    }
-    return { id: null, method: 'google' };
+    const id = parseGoogleDoubanSearchHtml(html);
+    return { id, method: 'google' };
   } catch {
     return { id: null, method: 'google' };
   }
