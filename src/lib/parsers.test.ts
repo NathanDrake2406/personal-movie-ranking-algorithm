@@ -1,6 +1,11 @@
 // src/lib/parsers.test.ts
 import { describe, it, expect } from 'vitest';
-import { parseLetterboxdHtml, parseMubiHtml, parseImdbHtml } from './parsers';
+import {
+  parseLetterboxdHtml,
+  parseMubiHtml,
+  parseImdbHtml,
+  parseMetacriticHtml,
+} from './parsers';
 
 describe('parsers', () => {
   describe('parseLetterboxdHtml', () => {
@@ -59,6 +64,29 @@ describe('parsers', () => {
       const html = '<html>No rating</html>';
       const result = parseImdbHtml(html);
       expect(result.value).toBeNull();
+    });
+  });
+
+  describe('parseMetacriticHtml', () => {
+    it('extracts score from new HTML format', () => {
+      const html = 'title="Metascore 85 out of 100"  Based on 42 Critic';
+      const result = parseMetacriticHtml(html);
+      expect(result.value).toBe(85);
+      expect(result.count).toBe(42);
+    });
+
+    it('falls back to JSON-LD format', () => {
+      const html = '"ratingValue": 73,"reviewCount": 35';
+      const result = parseMetacriticHtml(html);
+      expect(result.value).toBe(73);
+      expect(result.count).toBe(35);
+    });
+
+    it('prefers new format over legacy', () => {
+      const html = 'title="Metascore 90 out of 100" "ratingValue": 85 Based on 50 Critic "reviewCount": 40';
+      const result = parseMetacriticHtml(html);
+      expect(result.value).toBe(90);
+      expect(result.count).toBe(50);
     });
   });
 });

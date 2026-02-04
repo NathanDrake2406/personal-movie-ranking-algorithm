@@ -40,3 +40,23 @@ export function parseImdbHtml(html: string): ParsedRating {
 
   return { value: Number.isFinite(value) ? value : null, count };
 }
+
+export function parseMetacriticHtml(html: string): ParsedRating {
+  // Try new HTML format first
+  const valueMatch = html.match(/title="Metascore (\d+) out of 100"/);
+  const countMatch = html.match(/Based on (\d+) Critic/);
+
+  // Fallback to legacy JSON-LD format
+  const legacyValueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
+  const legacyCountMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
+
+  const value = valueMatch?.[1]
+    ? Number(valueMatch[1])
+    : (legacyValueMatch?.[1] ? Number(legacyValueMatch[1]) : null);
+
+  const count = countMatch?.[1]
+    ? parseInt(countMatch[1], 10)
+    : (legacyCountMatch?.[1] ? parseInt(legacyCountMatch[1], 10) : null);
+
+  return { value, count };
+}
