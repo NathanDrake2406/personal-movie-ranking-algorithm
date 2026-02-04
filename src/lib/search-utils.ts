@@ -16,6 +16,7 @@ export type SearchResult = {
   title: string;
   release_date?: string;
   popularity?: number;
+  vote_count?: number;
 };
 
 /**
@@ -142,12 +143,13 @@ export function phoneticMatch(a: string, b: string): boolean {
  */
 const WEIGHTS = {
   SIMILARITY_BASE: 0.35, // 35% base weight for title similarity
-  NEAR_EXACT_BONUS: 20, // Bonus for >0.9 similarity
+  NEAR_EXACT_BONUS: 15, // Bonus for >0.9 similarity
   PREFIX_MATCH_BONUS: 25, // Bonus when query is prefix of title (franchise/sequels)
-  YEAR_MATCH_BONUS: 20, // Bonus for matching requested year
+  YEAR_MATCH_BONUS: 10, // Bonus for matching requested year
   PHONETIC_BONUS: 10, // Bonus for phonetic match
   RECENCY_BONUS: 10, // Max bonus for recent movies (decays over 20 years)
-  POPULARITY_WEIGHT: 0.25, // 25% for popularity
+  POPULARITY_WEIGHT: 0.30, // 30% for popularity
+  VOTE_COUNT_MAX: 25, // Max bonus for high vote counts (log-scaled)
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -220,10 +222,20 @@ function calculateScore(
   // Recency bonus (0-20 points, favors recent movies)
   score += getRecencyBonus(result.release_date);
 
-  // Popularity (0-25 points)
+  // Popularity (0-20 points)
   const popularity = result.popularity ?? 0;
   const normalizedPopularity = maxPopularity > 0 ? popularity / maxPopularity : 0;
   score += normalizedPopularity * 100 * WEIGHTS.POPULARITY_WEIGHT;
+
+  // Vote count (0-20 points, log-scaled for cultural significance)
+  // log10(1000) ≈ 3, log10(10000) ≈ 4, log10(100000) ≈ 5
+  // Scale so 10k+ votes gets near-max, 1k gets ~60%, 100 gets ~40%
+  const voteCount = result.vote_count ?? 0;
+  if (voteCount > 0) {
+    const logVotes = Math.log10(voteCount);
+    const normalizedVotes = Math.min(logVotes / 5, 1); // Cap at 100k votes (log10 = 5)
+    score += normalizedVotes * WEIGHTS.VOTE_COUNT_MAX;
+  }
 
   return score;
 }

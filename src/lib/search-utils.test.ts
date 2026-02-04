@@ -232,12 +232,12 @@ describe('rankResults', () => {
 
   it('boosts recent movies in franchise searches', () => {
     const results: SearchResult[] = [
-      { id: 1, title: 'Dune', release_date: '1984-12-14', popularity: 50 },
-      { id: 2, title: 'Dune', release_date: '2021-10-22', popularity: 200 },
-      { id: 3, title: 'Dune: Part Two', release_date: '2024-03-01', popularity: 300 },
+      { id: 1, title: 'Dune', release_date: '1984-12-14', popularity: 50, vote_count: 800 },
+      { id: 2, title: 'Dune', release_date: '2021-10-22', popularity: 200, vote_count: 12000 },
+      { id: 3, title: 'Dune: Part Two', release_date: '2024-03-01', popularity: 300, vote_count: 8000 },
     ];
     const ranked = rankResults(results, 'Dune', null);
-    // Recent + popular movies should rank higher
+    // Recent + popular + high vote count movies should rank higher
     // Dune: Part Two (2024) and Dune (2021) should beat Dune (1984)
     expect(ranked[0].release_date).toMatch(/202[0-9]/);
     expect(ranked[1].release_date).toMatch(/202[0-9]/);
@@ -246,12 +246,12 @@ describe('rankResults', () => {
 
   it('ranks sequels/prequels when query is prefix of title', () => {
     const results: SearchResult[] = [
-      { id: 1, title: 'Dune', release_date: '2021-10-22', popularity: 200 },
-      { id: 2, title: 'Dune: Part Two', release_date: '2024-03-01', popularity: 300 },
-      { id: 3, title: 'The Dune Sea', release_date: '2015-01-01', popularity: 10 },
+      { id: 1, title: 'Dune', release_date: '2021-10-22', popularity: 200, vote_count: 12000 },
+      { id: 2, title: 'Dune: Part Two', release_date: '2024-03-01', popularity: 300, vote_count: 8000 },
+      { id: 3, title: 'The Dune Sea', release_date: '2015-01-01', popularity: 10, vote_count: 50 },
     ];
     const ranked = rankResults(results, 'Dune', null);
-    // "Dune: Part Two" should rank high because "Dune" is a prefix and it's recent+popular
+    // "Dune: Part Two" should rank high because "Dune" is a prefix and it's recent+popular+high votes
     const top2Ids = [ranked[0].id, ranked[1].id];
     expect(top2Ids).toContain(1);
     expect(top2Ids).toContain(2);

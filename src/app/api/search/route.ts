@@ -10,6 +10,7 @@ type TMDBSearchResult = {
     release_date?: string;
     poster_path?: string;
     popularity?: number;
+    vote_count?: number;
   }>;
 };
 
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
       title: movie.title,
       release_date: movie.release_date,
       popularity: movie.popularity,
+      vote_count: movie.vote_count,
     }));
 
     // Re-rank results using smart ranking
