@@ -8,19 +8,19 @@ import type { SourceScore, OverallScore } from './types';
  */
 
 const WEIGHTS: Record<string, number> = {
-  // Critics (47%)
-  rotten_tomatoes_top: 0.18,
-  metacritic: 0.16,
-  rotten_tomatoes_all: 0.13,
+  // Critics (51%)
+  rotten_tomatoes_top: 0.20,
+  metacritic: 0.17,
+  rotten_tomatoes_all: 0.14,
 
   // Mid (25%)
   allocine_press: 0.13,
   letterboxd: 0.12,
 
-  // Popular (28%)
+  // Popular (24%)
   rotten_tomatoes_audience: 0.08,
   imdb: 0.08,
-  allocine_user: 0.08,
+  allocine_user: 0.04,
   douban: 0.04,
 };
 
