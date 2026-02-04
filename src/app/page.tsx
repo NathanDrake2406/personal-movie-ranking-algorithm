@@ -413,6 +413,29 @@ export default function Home() {
   const allocinePress = allocineScores.find((s) => s.source === 'allocine_press');
   const allocineUser = allocineScores.find((s) => s.source === 'allocine_user');
 
+  // Build a unified, alphabetically-sorted array of card definitions
+  type CardDef =
+    | { type: 'individual'; sortKey: string; score: SourceScore }
+    | { type: 'rt'; sortKey: string }
+    | { type: 'allocine'; sortKey: string };
+
+  const cardDefs: CardDef[] = [
+    // Individual score cards
+    ...otherScores.map((s): CardDef => ({
+      type: 'individual',
+      sortKey: s.label.toLowerCase(),
+      score: s,
+    })),
+    // Combined RT card (if any RT scores exist)
+    ...(rtScores.length > 0
+      ? [{ type: 'rt' as const, sortKey: 'rotten tomatoes' }]
+      : []),
+    // Combined AlloCiné card (if any AlloCiné scores exist)
+    ...(allocineScores.length > 0
+      ? [{ type: 'allocine' as const, sortKey: 'allocine' }]
+      : []),
+  ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
   return (
     <div className={styles.page}>
       <header className={styles.masthead}>
@@ -558,27 +581,30 @@ export default function Home() {
           <div className={styles.scoresSection}>
             <h3 className={styles.scoresTitle}>Individual Scores</h3>
             <div className={styles.scoresGrid}>
-              {otherScores.map((s) => (
-                <ScoreCard key={s.source} score={s} />
-              ))}
-
-              {/* Combined RT Card */}
-              {rtScores.length > 0 ? (
-                <RTScoreCard
-                  rtMain={rtMain}
-                  rtAudience={rtAudience}
-                  rtAll={rtAll}
-                  rtTop={rtTop}
-                />
-              ) : null}
-
-              {/* Combined AlloCiné Card */}
-              {allocineScores.length > 0 ? (
-                <AllocineScoreCard
-                  allocinePress={allocinePress}
-                  allocineUser={allocineUser}
-                />
-              ) : null}
+              {cardDefs.map((card) => {
+                switch (card.type) {
+                  case 'individual':
+                    return <ScoreCard key={card.score.source} score={card.score} />;
+                  case 'rt':
+                    return (
+                      <RTScoreCard
+                        key="rotten_tomatoes"
+                        rtMain={rtMain}
+                        rtAudience={rtAudience}
+                        rtAll={rtAll}
+                        rtTop={rtTop}
+                      />
+                    );
+                  case 'allocine':
+                    return (
+                      <AllocineScoreCard
+                        key="allocine"
+                        allocinePress={allocinePress}
+                        allocineUser={allocineUser}
+                      />
+                    );
+                }
+              })}
             </div>
           </div>
         </section>
