@@ -113,6 +113,61 @@ type RTScoreCardProps = {
   rtTop: SourceScore | undefined;
 };
 
+type AllocineScoreCardProps = {
+  allocinePress: SourceScore | undefined;
+  allocineUser: SourceScore | undefined;
+};
+
+const AllocineScoreCard = memo(function AllocineScoreCard({
+  allocinePress,
+  allocineUser,
+}: AllocineScoreCardProps) {
+  // If neither score exists, don't render
+  if (!allocinePress && !allocineUser) return null;
+
+  const url = allocinePress?.url || allocineUser?.url;
+  const error = allocinePress?.error || allocineUser?.error;
+
+  return (
+    <div className={`${styles.scoreCard} ${styles.rtCard}`}>
+      <p className={styles.scoreSource}>AlloCiné</p>
+
+      {/* Press & User scores side by side */}
+      <div className={styles.rtMainScores}>
+        <div className={styles.rtMainScore}>
+          <span className={styles.rtMainValue}>
+            {formatScore(allocinePress?.normalized ?? null)}
+          </span>
+          {allocinePress?.raw?.value != null ? (
+            <span className={styles.rtMainScale}>
+              {allocinePress.raw.value} out of {allocinePress.raw.scale.split('-')[1]}
+            </span>
+          ) : null}
+          <span className={styles.rtMainLabel}>Press</span>
+        </div>
+        <div className={styles.rtMainScore}>
+          <span className={styles.rtMainValue}>
+            {formatScore(allocineUser?.normalized ?? null)}
+          </span>
+          {allocineUser?.raw?.value != null ? (
+            <span className={styles.rtMainScale}>
+              {allocineUser.raw.value} out of {allocineUser.raw.scale.split('-')[1]}
+            </span>
+          ) : null}
+          <span className={styles.rtMainLabel}>User</span>
+        </div>
+      </div>
+
+      {error ? <p className={styles.scoreMuted}>{error}</p> : null}
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className={styles.scoreLink}>
+          View source →
+        </a>
+      ) : null}
+    </div>
+  );
+});
+
 const RTScoreCard = memo(function RTScoreCard({
   rtMain,
   rtAudience,
@@ -345,13 +400,18 @@ export default function Home() {
     inputRef.current?.focus();
   };
 
-  // Separate RT scores from others
+  // Separate RT and AlloCiné scores from others (they get combined cards)
   const rtScores = data?.sources.filter((s) => s.source.startsWith('rotten_tomatoes')) ?? [];
-  const otherScores = data?.sources.filter((s) => !s.source.startsWith('rotten_tomatoes')) ?? [];
+  const allocineScores = data?.sources.filter((s) => s.source.startsWith('allocine_')) ?? [];
+  const otherScores = data?.sources.filter((s) =>
+    !s.source.startsWith('rotten_tomatoes') && !s.source.startsWith('allocine_')
+  ) ?? [];
   const rtMain = rtScores.find((s) => s.source === 'rotten_tomatoes');
   const rtAudience = rtScores.find((s) => s.source === 'rotten_tomatoes_audience');
   const rtAll = rtScores.find((s) => s.source === 'rotten_tomatoes_all');
   const rtTop = rtScores.find((s) => s.source === 'rotten_tomatoes_top');
+  const allocinePress = allocineScores.find((s) => s.source === 'allocine_press');
+  const allocineUser = allocineScores.find((s) => s.source === 'allocine_user');
 
   return (
     <div className={styles.page}>
@@ -362,7 +422,7 @@ export default function Home() {
       <section className={styles.hero}>
         <h1 className={styles.headline}>One Score to Rule Them All</h1>
         <p className={styles.subhead}>
-          Scores from IMDb, RT, Metacritic, Letterboxd, Mubi, and Douban.
+          Scores from IMDb, RT, Metacritic, Letterboxd, AlloCiné, and Douban.
           <br />
           Distilled into one score using a weighted algorithm.
         </p>
@@ -509,6 +569,14 @@ export default function Home() {
                   rtAudience={rtAudience}
                   rtAll={rtAll}
                   rtTop={rtTop}
+                />
+              ) : null}
+
+              {/* Combined AlloCiné Card */}
+              {allocineScores.length > 0 ? (
+                <AllocineScoreCard
+                  allocinePress={allocinePress}
+                  allocineUser={allocineUser}
                 />
               ) : null}
             </div>
