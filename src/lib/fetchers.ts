@@ -698,8 +698,8 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   let finalRtScores = rtScores;
   let finalMetacriticScore = metacriticScore;
 
-  // RT: If all scores have errors and we have OMDB fallback, use it
-  const rtAllFailed = rtScores.every((s) => s.error != null);
+  // RT: If all scores have errors OR all normalized values are null, use OMDB fallback
+  const rtAllFailed = rtScores.every((s) => s.error != null || s.normalized == null);
   if (rtAllFailed && imdbResult.fallback.rt != null) {
     finalRtScores = [
       normalizeScore({
@@ -712,8 +712,8 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
     ];
   }
 
-  // Metacritic: If failed and we have OMDB fallback, use it
-  if (metacriticScore.error != null && imdbResult.fallback.metacritic != null) {
+  // Metacritic: If failed (error OR no normalized value) and we have OMDB fallback, use it
+  if ((metacriticScore.error != null || metacriticScore.normalized == null) && imdbResult.fallback.metacritic != null) {
     finalMetacriticScore = normalizeScore({
       source: 'metacritic',
       label: 'Metacritic',

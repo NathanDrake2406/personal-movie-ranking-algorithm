@@ -195,6 +195,7 @@ export default function Home() {
   const listboxRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const justSelected = useRef(false);
+  const scoreAbortController = useRef<AbortController | null>(null);
 
   // Derived state from fetchState
   const loading = fetchState.status === 'loading';
@@ -302,6 +303,10 @@ export default function Home() {
   };
 
   const fetchScores = async (tmdbId: number) => {
+    // Cancel any in-flight request
+    scoreAbortController.current?.abort();
+    scoreAbortController.current = new AbortController();
+
     setLastTmdbId(tmdbId);
     dispatch({ type: 'FETCH_START' });
     setShowDropdown(false);
@@ -310,11 +315,14 @@ export default function Home() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ tmdbId }),
+        signal: scoreAbortController.current.signal,
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Request failed');
       dispatch({ type: 'FETCH_SUCCESS', data: json as ScorePayload });
     } catch (err) {
+      // Ignore aborted requests
+      if ((err as Error).name === 'AbortError') return;
       dispatch({ type: 'FETCH_ERROR', error: (err as Error).message });
     }
   };

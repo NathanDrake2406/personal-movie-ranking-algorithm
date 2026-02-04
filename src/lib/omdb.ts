@@ -63,10 +63,13 @@ export function parseOmdbRatings(movie: OmdbMovie) {
       rottenTomatoes = Number.isFinite(n) ? n : null;
     }
   }
-  const imdb = movie.imdbRating ? Number(movie.imdbRating) : null;
-  const imdbVotes = movie.imdbVotes
+  const imdbRaw = movie.imdbRating ? Number(movie.imdbRating) : null;
+  const imdb = Number.isFinite(imdbRaw) ? imdbRaw : null;
+  const imdbVotesRaw = movie.imdbVotes
     ? parseInt(movie.imdbVotes.replace(/,/g, ''), 10)
     : null;
-  const metacritic = movie.Metascore ? Number(movie.Metascore) : null;
+  const imdbVotes = Number.isFinite(imdbVotesRaw) ? imdbVotesRaw : null;
+  const metacriticRaw = movie.Metascore ? Number(movie.Metascore) : null;
+  const metacritic = Number.isFinite(metacriticRaw) ? metacriticRaw : null;
   return { imdb, imdbVotes, metacritic, rottenTomatoes };
 }

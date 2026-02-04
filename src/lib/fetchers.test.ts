@@ -84,4 +84,53 @@ describe('runFetchers', () => {
     expect(rt?.normalized).toBe(86);
     expect(mc?.normalized).toBe(73);
   });
+
+  it('uses OMDb RT fallback when RT returns 200 but no score data', async () => {
+    // This tests the bug where RT returns HTTP 200 with missing meterScore
+    // and no scores can be scraped - the OMDB fallback should trigger
+    const { fetchJson } = await import('./http');
+    const mockedFetchJson = vi.mocked(fetchJson);
+
+    // Override to return empty meterScore for this specific call pattern
+    mockedFetchJson.mockImplementation(async (url: string) => {
+      if (url.includes('omdbapi')) {
+        return {
+          imdbRating: '8.4',
+          imdbVotes: '1,234,567',
+          Ratings: [{ Source: 'Rotten Tomatoes', Value: '86%' }],
+          Metascore: '73',
+        };
+      }
+      // RT API returns 200 but with no score
+      if (url.includes('rottentomatoes') && url.includes('napi')) {
+        return {}; // No meterScore field
+      }
+      if (url.includes('douban.com/j/subject_suggest')) return [];
+      if (url.includes('douban.com/j/subject_abstract'))
+        return { r: 0, subject: { rate: '9.1', title: 'Test Movie' } };
+      throw new Error('unhandled url ' + url);
+    });
+
+    const { fetchText } = await import('./http');
+    const mockedFetchText = vi.mocked(fetchText);
+    mockedFetchText.mockImplementation(async (url: string) => {
+      // RT HTML scrape also returns no data
+      if (url.includes('rottentomatoes')) return '<html>no data</html>';
+      if (url.includes('letterboxd')) return '"ratingValue":4.1,"ratingCount":50000';
+      if (url.includes('metacritic')) return '"ratingValue": 73,"ratingCount":42';
+      if (url.includes('mubi.com/en/films/99999/ratings'))
+        return '<meta name="description" content="Average rating: 8.5/10 out of 12,345 ratings">';
+      return '';
+    });
+
+    const res = await runFetchers({
+      ...baseCtx,
+      movie: { ...baseCtx.movie, imdbId: 'tt-rt-empty' },
+    });
+
+    // OMDB fallback should be used since RT returned no data
+    const rt = res.sources.find((s) => s.source === 'rotten_tomatoes');
+    expect(rt?.normalized).toBe(86);
+    expect(rt?.fromFallback).toBe(true);
+  });
 });
