@@ -1,9 +1,10 @@
 export type SourceName =
+  | 'allocine_press'
+  | 'allocine_user'
   | 'douban'
   | 'imdb'
   | 'letterboxd'
   | 'metacritic'
-  | 'mubi'
   | 'rotten_tomatoes'
   | 'rotten_tomatoes_all'
   | 'rotten_tomatoes_audience'
@@ -36,7 +37,8 @@ export type WikidataIds = {
   metacritic?: string;
   letterboxd?: string;
   douban?: string;
-  mubi?: string;
+  allocineFilm?: string;
+  allocineSeries?: string;
 };
 
 export type OverallScore = {
