@@ -1,31 +1,27 @@
 import type { SourceScore, OverallScore } from './types';
 
 /**
- * Simple bloc-based weighted scoring algorithm.
+ * Flat weighted scoring algorithm.
  *
- * Three blocs with shares of final score:
- *   - Popular (20%): IMDb 40%, RT Audience 45%, Douban 15%
- *   - Cinephile (35%): Letterboxd 80%, Mubi 20%
- *   - Critical (45%): Metacritic 40%, RT Top Critics 40%, RT All Critics 20%
- *
+ * All sources have direct percentage weights (total 100%).
  * Missing sources are handled by renormalizing over available sources.
  */
 
-// Absolute weights (bloc share × within-bloc weight)
 const WEIGHTS: Record<string, number> = {
-  // Popular bloc (20%)
-  imdb: 0.2 * 0.4, // 0.08
-  douban: 0.2 * 0.15, // 0.03
-  rotten_tomatoes_audience: 0.2 * 0.45, // 0.09
+  // Critics (47%)
+  rotten_tomatoes_top: 0.18,
+  metacritic: 0.16,
+  rotten_tomatoes_all: 0.13,
 
-  // Cinephile bloc (35%)
-  letterboxd: 0.35 * 0.8, // 0.28
-  mubi: 0.35 * 0.2, // 0.07
+  // Mid (25%)
+  allocine_press: 0.13,
+  letterboxd: 0.12,
 
-  // Critical bloc (45%)
-  metacritic: 0.45 * 0.4, // 0.18
-  rotten_tomatoes_top: 0.45 * 0.4, // 0.18
-  rotten_tomatoes_all: 0.45 * 0.2, // 0.09
+  // Popular (28%)
+  rotten_tomatoes_audience: 0.08,
+  imdb: 0.08,
+  allocine_user: 0.08,
+  douban: 0.04,
 };
 
 // Minimum sources required for a verdict
