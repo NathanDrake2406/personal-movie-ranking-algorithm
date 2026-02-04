@@ -43,3 +43,9 @@ next-env.d.ts
 # Generated files
 .playwright-mcp/
 docs/plans/
+
+# Editor/IDE config
+CLAUDE.md
+*.claude.*
+.cursor/
+.github/copilot-instructions.md
