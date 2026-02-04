@@ -58,7 +58,7 @@ export function parseMetacriticHtml(html: string): ParsedRating {
     ? parseInt(countMatch[1], 10)
     : (legacyCountMatch?.[1] ? parseInt(legacyCountMatch[1], 10) : null);
 
-  return { value, count };
+  return { value: Number.isFinite(value) ? value : null, count };
 }
 
 export function parseDoubanSubjectSearchHtml(html: string): string | null {
