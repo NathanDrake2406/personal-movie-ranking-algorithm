@@ -179,7 +179,7 @@ async function fetchRottenTomatoes(
       avgTop = criticsParsed.criticsAvgTop;
       allCriticsCount = criticsParsed.allCriticsCount;
       topCriticsCount = criticsParsed.topCriticsCount;
-      value = criticsParsed.tomatometer ?? avgAll;
+      if (avgAll != null) value = avgAll;
     }
 
     const scores: SourceScore[] = [];
