@@ -146,12 +146,12 @@ const WEIGHTS = {
   PREFIX_MATCH_BONUS: 25, // Bonus when query is prefix of title (franchise/sequels)
   YEAR_MATCH_BONUS: 20, // Bonus for matching requested year
   PHONETIC_BONUS: 10, // Bonus for phonetic match
-  RECENCY_BONUS: 25, // Max bonus for recent movies (decays over 10 years)
+  RECENCY_BONUS: 10, // Max bonus for recent movies (decays over 20 years)
   POPULARITY_WEIGHT: 0.25, // 25% for popularity
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
-const RECENCY_DECAY_YEARS = 10; // Full bonus for current year, decays to 0 over 10 years
+const RECENCY_DECAY_YEARS = 20; // Full bonus for current year, decays to 0 over 20 years
 
 /**
  * Check if query is a prefix of title (for franchise/sequel matching)
