@@ -37,9 +37,10 @@ export function normalizeScore(source: SourceScore): SourceScore {
       // Metascore already 0-100
       normalized = clamp(v);
       break;
-    case 'mubi':
-      // Mubi ratings are 0-10
-      normalized = clamp((v / 10) * 100);
+    case 'allocine_press':
+    case 'allocine_user':
+      // AlloCiné ratings are 0-5 stars
+      normalized = clamp((v / 5) * 100);
       break;
     case 'rotten_tomatoes':
     case 'rotten_tomatoes_all':
