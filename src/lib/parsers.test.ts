@@ -5,6 +5,9 @@ import {
   parseMubiHtml,
   parseImdbHtml,
   parseMetacriticHtml,
+  parseDoubanSubjectSearchHtml,
+  parseDoubanGlobalSearchHtml,
+  parseGoogleDoubanSearchHtml,
 } from './parsers';
 
 describe('parsers', () => {
@@ -87,6 +90,42 @@ describe('parsers', () => {
       const result = parseMetacriticHtml(html);
       expect(result.value).toBe(90);
       expect(result.count).toBe(50);
+    });
+  });
+
+  describe('Douban ID extractors', () => {
+    describe('parseDoubanSubjectSearchHtml', () => {
+      it('extracts subject ID', () => {
+        const html = '<a href="/subject/1291546/">Movie</a>';
+        expect(parseDoubanSubjectSearchHtml(html)).toBe('1291546');
+      });
+
+      it('returns null when no subject found', () => {
+        expect(parseDoubanSubjectSearchHtml('<html>No results</html>')).toBeNull();
+      });
+    });
+
+    describe('parseDoubanGlobalSearchHtml', () => {
+      it('extracts ID from URL-encoded onclick', () => {
+        const html = 'subject%2F26636712';
+        expect(parseDoubanGlobalSearchHtml(html)).toBe('26636712');
+      });
+
+      it('extracts ID from direct movie URL', () => {
+        const html = 'movie.douban.com/subject/1292052/';
+        expect(parseDoubanGlobalSearchHtml(html)).toBe('1292052');
+      });
+    });
+
+    describe('parseGoogleDoubanSearchHtml', () => {
+      it('extracts Douban ID from Google results', () => {
+        const html = 'href="https://movie.douban.com/subject/1292720/"';
+        expect(parseGoogleDoubanSearchHtml(html)).toBe('1292720');
+      });
+
+      it('returns null when no Douban link found', () => {
+        expect(parseGoogleDoubanSearchHtml('<html>No results</html>')).toBeNull();
+      });
     });
   });
 });

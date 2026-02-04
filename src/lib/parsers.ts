@@ -60,3 +60,23 @@ export function parseMetacriticHtml(html: string): ParsedRating {
 
   return { value, count };
 }
+
+export function parseDoubanSubjectSearchHtml(html: string): string | null {
+  const match = html.match(/subject\/(\d+)/);
+  return match?.[1] ?? null;
+}
+
+export function parseDoubanGlobalSearchHtml(html: string): string | null {
+  // URL-encoded format first (from onclick handlers)
+  const encodedMatch = html.match(/subject%2F(\d+)/);
+  if (encodedMatch?.[1]) return encodedMatch[1];
+
+  // Direct URL format fallback
+  const directMatch = html.match(/movie\.douban\.com\/subject\/(\d+)/);
+  return directMatch?.[1] ?? null;
+}
+
+export function parseGoogleDoubanSearchHtml(html: string): string | null {
+  const match = html.match(/movie\.douban\.com\/subject\/(\d+)/);
+  return match?.[1] ?? null;
+}
