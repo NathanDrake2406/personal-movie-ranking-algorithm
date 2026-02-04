@@ -32,7 +32,7 @@ describe('Home page', () => {
     it('cancels previous score fetch when new movie is selected', async () => {
       const user = userEvent.setup();
       const abortedRequests: string[] = [];
-      let resolvers: { [key: string]: (value: Response) => void } = {};
+      const resolvers: { [key: string]: (value: Response) => void } = {};
 
       // Track which requests get aborted
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
