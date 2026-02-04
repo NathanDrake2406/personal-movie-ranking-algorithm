@@ -20,9 +20,9 @@ vi.mock('./http', () => {
   const fetchText = vi.fn(async (url: string) => {
     if (url.includes('letterboxd')) return '"ratingValue":4.1,"ratingCount":50000';
     if (url.includes('metacritic')) return '"ratingValue": 73,"ratingCount":42';
-    // Mubi ratings page (uses numeric ID from Wikidata)
-    if (url.includes('mubi.com/en/films/99999/ratings'))
-      return '<meta name="description" content="Average rating: 8.5/10 out of 12,345 ratings">';
+    // AlloCiné page with press and user ratings
+    if (url.includes('allocine.fr'))
+      return '<div>Presse</div><span class="stareval-note">3,8</span><span class="stareval-note">4,2</span>';
     // Douban search pages and Google fallback - return empty
     if (url.includes('douban.com') || url.includes('google.com')) return '';
     return '';
@@ -34,7 +34,7 @@ import { runFetchers } from './fetchers';
 
 const baseCtx = {
   movie: { imdbId: 'tt1', title: 'Test Movie' },
-  wikidata: { rottenTomatoes: 'test_movie', metacritic: 'test-movie', letterboxd: 'test-movie', douban: '12345', mubi: '99999' },
+  wikidata: { rottenTomatoes: 'test_movie', metacritic: 'test-movie', letterboxd: 'test-movie', douban: '12345', allocineFilm: '12345' },
   env: { OMDB_API_KEY: 'omdb' },
 };
 
@@ -50,11 +50,13 @@ describe('runFetchers', () => {
     expect(mc?.normalized).toBe(73);
     const lb = res.sources.find((s) => s.source === 'letterboxd');
     expect(lb?.normalized).toBeCloseTo(82); // 4.1/5 * 100
-    const mubi = res.sources.find((s) => s.source === 'mubi');
-    expect(mubi?.normalized).toBeCloseTo(85); // 8.5/10 * 100
+    const allocinePress = res.sources.find((s) => s.source === 'allocine_press');
+    expect(allocinePress?.normalized).toBeCloseTo(76); // 3.8/5 * 100
+    const allocineUser = res.sources.find((s) => s.source === 'allocine_user');
+    expect(allocineUser?.normalized).toBeCloseTo(84); // 4.2/5 * 100
     const douban = res.sources.find((s) => s.source === 'douban');
     expect(douban?.normalized).toBeCloseTo(91); // 9.1/10 * 100
-    // Overall may be null if not enough weighted sources match (Mubi/Douban often missing)
+    // Overall may be null if not enough weighted sources match
     // Just verify the response structure is valid
     expect(res.sources.length).toBeGreaterThan(0);
   });
@@ -66,11 +68,11 @@ describe('runFetchers', () => {
       env: { OMDB_API_KEY: undefined },
     });
     // Without OMDB key, IMDb score won't be fetched via OMDB
-    // but other sources (letterboxd, mubi, douban) should still work
+    // but other sources (letterboxd, allocine, douban) should still work
     const lb = res.sources.find((s) => s.source === 'letterboxd');
     expect(lb?.normalized).toBeCloseTo(82);
-    const mubi = res.sources.find((s) => s.source === 'mubi');
-    expect(mubi?.normalized).toBeCloseTo(85);
+    const allocinePress = res.sources.find((s) => s.source === 'allocine_press');
+    expect(allocinePress?.normalized).toBeCloseTo(76);
   });
 
   it('uses OMDb fallbacks when RT/Metacritic slugs missing', async () => {
@@ -118,8 +120,8 @@ describe('runFetchers', () => {
       if (url.includes('rottentomatoes')) return '<html>no data</html>';
       if (url.includes('letterboxd')) return '"ratingValue":4.1,"ratingCount":50000';
       if (url.includes('metacritic')) return '"ratingValue": 73,"ratingCount":42';
-      if (url.includes('mubi.com/en/films/99999/ratings'))
-        return '<meta name="description" content="Average rating: 8.5/10 out of 12,345 ratings">';
+      if (url.includes('allocine.fr'))
+        return '<div>Presse</div><span class="stareval-note">3,8</span><span class="stareval-note">4,2</span>';
       return '';
     });
 

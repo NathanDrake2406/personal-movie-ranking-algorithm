@@ -7,7 +7,6 @@ import { getApiKeys } from './config';
 import { fetchOmdbByIdWithRotation, parseOmdbRatings } from './omdb';
 import {
   parseImdbHtml,
-  parseMubiHtml,
   parseLetterboxdHtml,
   parseMetacriticHtml,
   parseDoubanSubjectSearchHtml,
@@ -16,6 +15,7 @@ import {
   parseRTApiResponse,
   parseRTCriticsHtml,
   parseRTAudienceHtml,
+  parseAllocineHtml,
 } from './parsers';
 
 type FetcherContext = {
@@ -100,53 +100,50 @@ function slugifyForLetterboxd(title: string, year?: string) {
   return year ? `${titleSlug}-${year}` : titleSlug;
 }
 
-async function fetchMubi(ctx: FetcherContext): Promise<SourceScore> {
-  // Prefer Wikidata ID (numeric), fall back to title slug
-  const mubiId = ctx.wikidata.mubi;
-  if (!mubiId) {
-    // No Wikidata ID - skip Mubi to avoid wrong matches with slug
-    return {
-      source: 'mubi',
-      label: 'Mubi',
-      normalized: null,
-      error: 'No Mubi ID in Wikidata',
-    };
+async function fetchAllocine(ctx: FetcherContext): Promise<SourceScore[]> {
+  const filmId = ctx.wikidata.allocineFilm;
+  const seriesId = ctx.wikidata.allocineSeries;
+
+  const id = filmId || seriesId;
+  if (!id) {
+    return [
+      { source: 'allocine_press', label: 'AlloCiné Press', normalized: null, error: 'No AlloCiné ID' },
+      { source: 'allocine_user', label: 'AlloCiné User', normalized: null, error: 'No AlloCiné ID' },
+    ];
   }
 
-  const url = `https://mubi.com/en/films/${mubiId}/ratings`;
+  const isFilm = !!filmId;
+  const url = isFilm
+    ? `https://www.allocine.fr/film/fichefilm_gen_cfilm=${id}.html`
+    : `https://www.allocine.fr/series/ficheserie_gen_cserie=${id}.html`;
 
   try {
-    const html = await fetchText(url, {
-      headers: { 'user-agent': BROWSER_UA, accept: 'text/html' },
-    });
+    const html = await fetchText(url, { headers: { 'user-agent': BROWSER_UA } });
+    const { press, user } = parseAllocineHtml(html);
 
-    const parsed = parseMubiHtml(html);
-
-    if (parsed.value != null) {
-      return normalizeScore({
-        source: 'mubi',
-        label: 'Mubi',
+    return [
+      normalizeScore({
+        source: 'allocine_press',
+        label: 'AlloCiné Press',
         normalized: null,
-        raw: { value: parsed.value, scale: '0-10' },
-        count: parsed.count,
-        url: `https://mubi.com/en/films/${mubiId}`,
-      });
-    }
-
-    return {
-      source: 'mubi',
-      label: 'Mubi',
-      normalized: null,
-      url: `https://mubi.com/en/films/${mubiId}`,
-      error: 'No rating found',
-    };
+        raw: press.value != null ? { value: press.value, scale: '0-5' } : undefined,
+        count: press.count,
+        url,
+      }),
+      normalizeScore({
+        source: 'allocine_user',
+        label: 'AlloCiné User',
+        normalized: null,
+        raw: user.value != null ? { value: user.value, scale: '0-5' } : undefined,
+        count: user.count,
+        url,
+      }),
+    ];
   } catch (err) {
-    return {
-      source: 'mubi',
-      label: 'Mubi',
-      normalized: null,
-      error: (err as Error).message,
-    };
+    return [
+      { source: 'allocine_press', label: 'AlloCiné Press', normalized: null, error: (err as Error).message },
+      { source: 'allocine_user', label: 'AlloCiné User', normalized: null, error: (err as Error).message },
+    ];
   }
 }
 
@@ -628,12 +625,12 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   if (cached) return cached;
 
   // Fetch ALL sources in parallel (no waiting for IMDb first)
-  const [imdbResult, rtScores, metacriticScore, letterboxdScore, mubiScore, doubanScore] = await Promise.all([
+  const [imdbResult, rtScores, metacriticScore, letterboxdScore, allocineScores, doubanScore] = await Promise.all([
     fetchImdb(ctx),
     fetchRottenTomatoes(ctx), // No fallback passed - apply post-hoc if needed
     fetchMetacritic(ctx),     // No fallback passed - apply post-hoc if needed
     fetchLetterboxd(ctx),
-    fetchMubi(ctx),
+    fetchAllocine(ctx),
     fetchDouban(ctx),
   ]);
 
@@ -671,7 +668,7 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
     finalRtScores,
     finalMetacriticScore,
     letterboxdScore,
-    mubiScore,
+    allocineScores,
     doubanScore,
   ];
 
