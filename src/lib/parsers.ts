@@ -25,3 +25,18 @@ export function parseMubiHtml(html: string): ParsedRating {
 
   return { value: Number.isFinite(value) ? value : null, count };
 }
+
+export function parseImdbHtml(html: string): ParsedRating {
+  const ratingBlock = html.match(/"aggregateRating":\{[^}]+\}/);
+  if (!ratingBlock) {
+    return { value: null, count: null };
+  }
+
+  const valueMatch = ratingBlock[0].match(/"ratingValue":([\d.]+)/);
+  const countMatch = ratingBlock[0].match(/"ratingCount":(\d+)/);
+
+  const value = valueMatch ? parseFloat(valueMatch[1]) : null;
+  const count = countMatch ? parseInt(countMatch[1], 10) : null;
+
+  return { value: Number.isFinite(value) ? value : null, count };
+}
