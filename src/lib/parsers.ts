@@ -296,13 +296,15 @@ export function parseImdbSummary(html: string): string | null {
     if (!plaidHtml) return null;
 
     // Decode HTML entities and clean up
-    return plaidHtml
+    const cleaned = plaidHtml
       .replace(/&#39;/g, "'")
       .replace(/&quot;/g, '"')
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
+      .replace(/^Reviewers say\s*/i, '')
       .trim();
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   } catch {
     return null;
   }
@@ -311,11 +313,14 @@ export function parseImdbSummary(html: string): string | null {
 export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): string | null {
   if (!data || typeof data !== 'object') return null;
 
-  const cleanSummary = (raw: string): string =>
-    decodeHtmlEntities(stripTags(raw))
+  const cleanSummary = (raw: string): string => {
+    const cleaned = decodeHtmlEntities(stripTags(raw))
       .replace(/\s*AI-generated from (?:the text of )?user reviews.*$/i, '')
+      .replace(/^Reviewers say\s*/i, '')
       .replace(/\s+/g, ' ')
       .trim();
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  };
 
   const summaryFromNode = (node: unknown): string | null => {
     if (!node || typeof node !== 'object') return null;

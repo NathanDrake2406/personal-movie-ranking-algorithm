@@ -985,6 +985,11 @@
   color: #777;
 }
 
+/* IMDb Summary Section */
+.imdbSummarySection {
+  margin-top: 20px;
+}
+
 /* Consensus Section */
 .consensusSection {
   margin-top: 24px;

@@ -332,7 +332,6 @@ const ThemesSection = memo(function ThemesSection({ themes, imdbId }: ThemesSect
           {!isLoading && !activeError && activeSummary && <p>{activeSummary}</p>}
         </div>
       )}
-      <span className={styles.themesFooter}>Based on audience reviews</span>
     </div>
   );
 });
@@ -354,7 +353,7 @@ const ConsensusSection = memo(function ConsensusSection({ consensus }: Consensus
       )}
       {consensus.audience && (
         <div className={styles.consensusBlock}>
-          <p className={styles.consensusLabel}>Audience Says</p>
+          <p className={styles.consensusLabel}>Audience Consensus</p>
           <p className={styles.consensusText}>{consensus.audience}</p>
         </div>
       )}
@@ -753,6 +752,13 @@ export default function Home() {
                     themes={data.themes}
                     imdbId={data.movie.imdbId}
                   />
+                )}
+                {data.imdbSummary && (
+                  <div className={styles.imdbSummarySection}>
+                    <div className={styles.consensusBlock}>
+                      <p className={styles.consensusText}>{data.imdbSummary}</p>
+                    </div>
+                  </div>
                 )}
                 {data.consensus && (
                   <ConsensusSection consensus={data.consensus} />
