@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getApiKeys } from '@/lib/config';
-import { parseQuery, rankResults, type SearchResult } from '@/lib/search-utils';
+import { parseQuery, rankResults, generateVariants, type SearchResult } from '@/lib/search-utils';
 import { fetchJson } from '@/lib/http';
 
 type TMDBSearchResult = {
@@ -50,6 +50,30 @@ export async function GET(request: Request) {
     // Fallback: if year filter returns empty, retry without year
     if (year && data.results.length === 0) {
       data = await fetchTMDB(tmdbKey, searchTitle, null);
+    }
+
+    // Fallback: if still empty, try query variants in parallel
+    if (data.results.length === 0) {
+      const variants = generateVariants(searchTitle);
+      if (variants.length > 0) {
+        const variantResults = await Promise.all(
+          variants.map((v) => fetchTMDB(tmdbKey, v, year))
+        );
+        // If year filter still empty, try variants without year
+        let combinedResults = variantResults.flatMap((r) => r.results);
+        if (combinedResults.length === 0 && year) {
+          const noYearResults = await Promise.all(
+            variants.map((v) => fetchTMDB(tmdbKey, v, null))
+          );
+          combinedResults = noYearResults.flatMap((r) => r.results);
+        }
+        // Dedupe by movie ID
+        const seen = new Map<number, (typeof data.results)[0]>();
+        for (const movie of combinedResults) {
+          if (!seen.has(movie.id)) seen.set(movie.id, movie);
+        }
+        data = { results: Array.from(seen.values()) };
+      }
     }
 
     // Convert to SearchResult format for ranking
