@@ -1096,7 +1096,7 @@
   .posterWrapper .posterContainer {
     order: 2;
     width: 100%;
-    max-width: 320px;
+    max-width: clamp(260px, 80vw, 360px);
   }
 
   .posterCredits {
