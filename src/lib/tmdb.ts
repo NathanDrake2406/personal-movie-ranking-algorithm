@@ -28,6 +28,12 @@ type TmdbDetailsResponse = {
   poster_path?: string;
   vote_average?: number;
   vote_count?: number;
+  overview?: string;
+  runtime?: number;
+  genres?: Array<{ id: number; name: string }>;
+  credits?: {
+    crew?: Array<{ job: string; name: string }>;
+  };
 };
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -49,16 +55,21 @@ export async function findByImdb(imdbId: string, apiKey: string) {
 }
 
 export async function getTmdbDetails(tmdbId: number, apiKey: string) {
-  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}`);
+  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits`);
 }
 
 export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
+  const director = movie.credits?.crew?.find((c) => c.job === 'Director')?.name;
   return {
     imdbId: movie.imdb_id ?? '',
     title: movie.title,
     year: movie.release_date?.slice(0, 4),
     poster: movie.poster_path ? `${IMG_BASE}${movie.poster_path}` : undefined,
     tmdbId: movie.id,
+    overview: movie.overview,
+    runtime: movie.runtime,
+    genres: movie.genres?.map((g) => g.name),
+    director,
   };
 }
 

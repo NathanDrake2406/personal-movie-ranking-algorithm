@@ -693,9 +693,15 @@ export default function Home() {
             <div className={styles.movieInfo}>
               <h2 className={styles.movieTitle}>{data.movie.title}</h2>
               <p className={styles.movieMeta}>
-                {data.movie.year && `${data.movie.year} · `}
-                {data.movie.imdbId}
+                {[
+                  data.movie.year,
+                  data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
+                  data.movie.genres?.slice(0, 3).join(', '),
+                ].filter(Boolean).join(' · ')}
               </p>
+              {data.movie.overview && (
+                <p className={styles.movieOverview}>{data.movie.overview}</p>
+              )}
               <div className={styles.verdictBox}>
                 <p className={styles.verdictLabel}>Our Verdict</p>
                 <p className={styles.verdictScore}>{formatScore(data.overall?.score ?? null)}</p>

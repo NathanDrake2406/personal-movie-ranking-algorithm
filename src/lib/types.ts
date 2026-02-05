@@ -30,6 +30,10 @@ export type MovieInfo = {
   year?: string;
   poster?: string;
   tmdbId?: number; // Still used for movie resolution, just not for scoring
+  overview?: string;
+  runtime?: number;
+  genres?: string[];
+  director?: string;
 };
 
 export type WikidataIds = {
