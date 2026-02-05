@@ -273,11 +273,7 @@ const ThemesSection = memo(function ThemesSection({ themes, summary, imdbUrl }: 
           <p>{summary}</p>
         </div>
       )}
-      {imdbUrl && (
-        <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.themesFooter}>
-          AI-generated from user reviews
-        </a>
-      )}
+      <span className={styles.themesFooter}>Based on audience reviews</span>
     </div>
   );
 });
@@ -294,11 +290,7 @@ const ImdbSummarySection = memo(function ImdbSummarySection({ summary, imdbUrl }
         <p className={styles.consensusLabel}>What Audiences Say</p>
         <p className={styles.consensusText}>{summary}</p>
       </div>
-      {imdbUrl && (
-        <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.consensusFooter}>
-          AI-generated from IMDb user reviews →
-        </a>
-      )}
+      <span className={styles.consensusFooter}>Based on audience reviews</span>
     </div>
   );
 });
