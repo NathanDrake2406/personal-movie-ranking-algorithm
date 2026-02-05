@@ -6,6 +6,7 @@ import {
   similarity,
   phoneticMatch,
   rankResults,
+  generateVariants,
   type SearchResult,
 } from './search-utils';
 
@@ -255,5 +256,41 @@ describe('rankResults', () => {
     const top2Ids = [ranked[0].id, ranked[1].id];
     expect(top2Ids).toContain(1);
     expect(top2Ids).toContain(2);
+  });
+});
+
+describe('generateVariants', () => {
+  it('swaps & to and', () => {
+    expect(generateVariants('Pride & Prejudice')).toContain('Pride and Prejudice');
+  });
+
+  it('swaps and to &', () => {
+    expect(generateVariants('Pride and Prejudice')).toContain('Pride & Prejudice');
+  });
+
+  it('removes apostrophes', () => {
+    expect(generateVariants("Ocean's Eleven")).toContain('Oceans Eleven');
+  });
+
+  it('removes hyphens with space', () => {
+    expect(generateVariants('Spider-Man')).toContain('Spider Man');
+  });
+
+  it('removes hyphens without space', () => {
+    expect(generateVariants('Spider-Man')).toContain('SpiderMan');
+  });
+
+  it('returns empty array when no variants apply', () => {
+    expect(generateVariants('Dune')).toEqual([]);
+  });
+
+  it('excludes duplicates', () => {
+    const variants = generateVariants('Spider-Man');
+    const unique = new Set(variants);
+    expect(variants.length).toBe(unique.size);
+  });
+
+  it('excludes original query from variants', () => {
+    expect(generateVariants('Pride & Prejudice')).not.toContain('Pride & Prejudice');
   });
 });

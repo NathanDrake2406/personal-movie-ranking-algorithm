@@ -263,3 +263,37 @@ export function rankResults(
 
   return scored.map((s) => s.result);
 }
+
+/**
+ * Generate query variants for fallback search when TMDB returns empty.
+ * Handles common substitutions that TMDB may not fuzzy-match.
+ */
+export function generateVariants(query: string): string[] {
+  const variants = new Set<string>();
+  const trimmed = query.trim();
+
+  // & ↔ and swaps
+  if (trimmed.includes('&')) {
+    variants.add(trimmed.replace(/\s*&\s*/g, ' and '));
+  }
+  if (/\band\b/i.test(trimmed)) {
+    variants.add(trimmed.replace(/\band\b/gi, '&'));
+  }
+
+  // Remove apostrophes
+  if (trimmed.includes("'")) {
+    variants.add(trimmed.replace(/'/g, ''));
+  }
+
+  // Remove hyphens (two variants: with space, without space)
+  if (trimmed.includes('-')) {
+    variants.add(trimmed.replace(/-/g, ' '));
+    variants.add(trimmed.replace(/-/g, ''));
+  }
+
+  // Remove original query and empty strings
+  variants.delete(trimmed);
+  variants.delete('');
+
+  return Array.from(variants);
+}
