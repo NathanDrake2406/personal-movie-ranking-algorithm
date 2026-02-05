@@ -19,7 +19,7 @@ export async function fetchWithTimeout(
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('Some sources took too long to respond. Please try again.');
+      throw new Error('Temporarily unavailable');
     }
     throw err;
   } finally {
