@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, KeyboardEvent, memo, useReducer, SyntheticEvent } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent, memo, useReducer, SyntheticEvent, useCallback } from 'react';
 import styles from './page.module.css';
 import type { ScorePayload, SourceScore } from '@/lib/types';
 
@@ -234,6 +234,94 @@ const RTScoreCard = memo(function RTScoreCard({
           View source →
         </a>
       ) : null}
+    </div>
+  );
+});
+
+type ThemeChipProps = {
+  theme: { label: string; sentiment: 'positive' | 'negative' };
+};
+
+const ThemeChip = memo(function ThemeChip({ theme }: ThemeChipProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  const handleClick = useCallback(() => {
+    setShowTooltip((prev) => !prev);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setShowTooltip(false);
+  }, []);
+
+  return (
+    <button
+      type="button"
+      className={`${styles.themeChip} ${theme.sentiment === 'negative' ? styles.themeChipNegative : ''}`}
+      onClick={handleClick}
+      onBlur={handleBlur}
+    >
+      {theme.label}
+      {showTooltip && (
+        <span className={styles.themeTooltip}>
+          {theme.label} — {theme.sentiment === 'positive' ? 'Positive ✓' : 'Negative'}
+        </span>
+      )}
+    </button>
+  );
+});
+
+type ThemesSectionProps = {
+  themes: Array<{ label: string; sentiment: 'positive' | 'negative' }>;
+  imdbUrl?: string;
+};
+
+const ThemesSection = memo(function ThemesSection({ themes, imdbUrl }: ThemesSectionProps) {
+  if (themes.length === 0) return null;
+
+  return (
+    <div className={styles.themesSection}>
+      <p className={styles.themesLabel}>What resonated with audiences</p>
+      <div className={styles.themesGrid}>
+        {themes.map((theme) => (
+          <ThemeChip key={theme.label} theme={theme} />
+        ))}
+      </div>
+      {imdbUrl && (
+        <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.themesFooter}>
+          AI-generated from user reviews
+        </a>
+      )}
+    </div>
+  );
+});
+
+type ConsensusSectionProps = {
+  consensus: { critics?: string; audience?: string };
+  rtUrl?: string;
+};
+
+const ConsensusSection = memo(function ConsensusSection({ consensus, rtUrl }: ConsensusSectionProps) {
+  if (!consensus.critics && !consensus.audience) return null;
+
+  return (
+    <div className={styles.consensusSection}>
+      {consensus.critics && (
+        <div className={styles.consensusBlock}>
+          <p className={styles.consensusLabel}>Critics Consensus</p>
+          <p className={styles.consensusText}>{consensus.critics}</p>
+        </div>
+      )}
+      {consensus.audience && (
+        <div className={styles.consensusBlock}>
+          <p className={styles.consensusLabel}>Audience Says</p>
+          <p className={styles.consensusText}>{consensus.audience}</p>
+        </div>
+      )}
+      {rtUrl && (
+        <a href={rtUrl} target="_blank" rel="noreferrer" className={styles.consensusFooter}>
+          View on Rotten Tomatoes →
+        </a>
+      )}
     </div>
   );
 });
@@ -575,6 +663,18 @@ export default function Home() {
                 <p className={styles.verdictLabel}>Our Verdict</p>
                 <p className={styles.verdictScore}>{formatScore(data.overall?.score ?? null)}</p>
               </div>
+              {data.themes && data.themes.length > 0 && (
+                <ThemesSection
+                  themes={data.themes}
+                  imdbUrl={`https://www.imdb.com/title/${data.movie.imdbId}/`}
+                />
+              )}
+              {data.consensus && (
+                <ConsensusSection
+                  consensus={data.consensus}
+                  rtUrl={data.sources.find(s => s.source === 'rotten_tomatoes')?.url}
+                />
+              )}
             </div>
           </div>
 

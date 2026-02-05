@@ -767,6 +767,110 @@
   color: #ccc;
 }
 
+/* Themes Section */
+.themesSection {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.themesLabel {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 12px 0;
+}
+
+.themesGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.themeChip {
+  position: relative;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #999;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.themeChip:hover {
+  background: #252525;
+}
+
+.themeChipNegative {
+  background: #1a1515;
+  border-color: #3a2a2a;
+}
+
+.themeTooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: #333;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.themesFooter {
+  display: block;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #555;
+}
+
+.themesFooter:hover {
+  color: #777;
+}
+
+/* Consensus Section */
+.consensusSection {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.consensusBlock {
+  margin-bottom: 16px;
+}
+
+.consensusLabel {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 8px 0;
+}
+
+.consensusText {
+  font-size: 15px;
+  color: #aaa;
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+}
+
+.consensusFooter {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #555;
+}
+
+.consensusFooter:hover {
+  color: #777;
+}
+
 /* Mobile */
 @media (max-width: 900px) {
   .scoresGrid {
