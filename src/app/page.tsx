@@ -689,8 +689,15 @@ export default function Home() {
               ) : (
                 <div className={styles.posterPlaceholder}>No poster</div>
               )}
+              {(data.movie.director || data.movie.cast?.length) && (
+                <p className={styles.posterCredits}>
+                  {data.movie.director && `Directed by ${data.movie.director}`}
+                  {data.movie.director && data.movie.cast?.length ? ' · ' : ''}
+                  {data.movie.cast?.length ? `Starring ${data.movie.cast.join(', ')}` : ''}
+                </p>
+              )}
             </div>
-            <div className={styles.movieInfo}>
+            <div className={styles.movieInfoTop}>
               <h2 className={styles.movieTitle}>{data.movie.title}</h2>
               <p className={styles.movieMeta}>
                 {[
@@ -699,6 +706,8 @@ export default function Home() {
                   data.movie.genres?.slice(0, 3).join(', '),
                 ].filter(Boolean).join(' · ')}
               </p>
+            </div>
+            <div className={styles.movieInfoMiddle}>
               {data.movie.overview && (
                 <p className={styles.movieOverview}>{data.movie.overview}</p>
               )}
@@ -706,6 +715,8 @@ export default function Home() {
                 <p className={styles.verdictLabel}>Our Verdict</p>
                 <p className={styles.verdictScore}>{formatScore(data.overall?.score ?? null)}</p>
               </div>
+            </div>
+            <div className={styles.movieInfoExtra}>
               {data.themes && data.themes.length > 0 && (
                 <ThemesSection
                   themes={data.themes}

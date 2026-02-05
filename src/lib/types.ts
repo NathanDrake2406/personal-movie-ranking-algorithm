@@ -34,6 +34,7 @@ export type MovieInfo = {
   runtime?: number;
   genres?: string[];
   director?: string;
+  cast?: string[];
 };
 
 export type WikidataIds = {

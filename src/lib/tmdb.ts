@@ -33,6 +33,7 @@ type TmdbDetailsResponse = {
   genres?: Array<{ id: number; name: string }>;
   credits?: {
     crew?: Array<{ job: string; name: string }>;
+    cast?: Array<{ name: string; order: number }>;
   };
 };
 
@@ -60,6 +61,10 @@ export async function getTmdbDetails(tmdbId: number, apiKey: string) {
 
 export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
   const director = movie.credits?.crew?.find((c) => c.job === 'Director')?.name;
+  const cast = movie.credits?.cast
+    ?.sort((a, b) => a.order - b.order)
+    .slice(0, 3)
+    .map((c) => c.name);
   return {
     imdbId: movie.imdb_id ?? '',
     title: movie.title,
@@ -70,6 +75,7 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
     runtime: movie.runtime,
     genres: movie.genres?.map((g) => g.name),
     director,
+    cast,
   };
 }
 
