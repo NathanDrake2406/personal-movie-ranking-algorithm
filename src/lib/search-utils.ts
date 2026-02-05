@@ -142,14 +142,14 @@ export function phoneticMatch(a: string, b: string): boolean {
  * Score weights for ranking
  */
 const WEIGHTS = {
-  SIMILARITY_BASE: 0.35, // 35% base weight for title similarity
-  NEAR_EXACT_BONUS: 15, // Bonus for >0.9 similarity
-  PREFIX_MATCH_BONUS: 25, // Bonus when query is prefix of title (franchise/sequels)
+  SIMILARITY_BASE: 0.20, // 20% base weight for title similarity
+  NEAR_EXACT_BONUS: 10, // Bonus for >0.9 similarity
+  PREFIX_MATCH_BONUS: 20, // Bonus when query is prefix of title (franchise/sequels)
   YEAR_MATCH_BONUS: 10, // Bonus for matching requested year
-  PHONETIC_BONUS: 10, // Bonus for phonetic match
-  RECENCY_BONUS: 10, // Max bonus for recent movies (decays over 20 years)
-  POPULARITY_WEIGHT: 0.30, // 30% for popularity
-  VOTE_COUNT_MAX: 25, // Max bonus for high vote counts (log-scaled)
+  PHONETIC_BONUS: 8, // Bonus for phonetic match
+  RECENCY_BONUS: 5, // Max bonus for recent movies (decays over 20 years)
+  POPULARITY_WEIGHT: 0.25, // 25% for popularity
+  VOTE_COUNT_MAX: 52, // Max bonus for high vote counts (log-scaled)
 };
 
 const CURRENT_YEAR = new Date().getFullYear();
