@@ -16,7 +16,10 @@ import {
   parseRTCriticsHtml,
   parseRTAudienceHtml,
   parseAllocineHtml,
+  parseImdbThemes,
+  parseRTConsensus,
 } from './parsers';
+import type { ImdbTheme, RTConsensus } from './types';
 
 type FetcherContext = {
   movie: MovieInfo;
@@ -37,7 +40,7 @@ function slugifyTitle(title: string) {
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fallback: OmdbFallback }> {
+async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fallback: OmdbFallback; themes: ImdbTheme[] }> {
   const { omdbKeys } = getApiKeys(ctx.env);
   const imdbUrl = `https://www.imdb.com/title/${ctx.movie.imdbId}`;
 
@@ -55,7 +58,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
           count: ratings.imdbVotes,
           url: imdbUrl,
         });
-        return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic } };
+        return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic }, themes: [] };
       }
     } catch {
       // All OMDB keys failed, fall through to scrape
@@ -68,6 +71,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
       headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en-US,en;q=0.9' },
     });
     const parsed = parseImdbHtml(html);
+    const themes = parseImdbThemes(html);
     if (parsed.value != null) {
       return {
         score: normalizeScore({
@@ -79,6 +83,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
           url: imdbUrl,
         }),
         fallback: {},
+        themes,
       };
     }
   } catch {
@@ -88,6 +93,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
   return {
     score: { source: 'imdb', label: 'IMDb', normalized: null, url: imdbUrl, error: 'No rating data available' },
     fallback: {},
+    themes: [],
   };
 }
 
