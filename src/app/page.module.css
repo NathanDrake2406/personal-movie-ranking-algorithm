@@ -15,9 +15,9 @@
 
 .mastheadTitle {
   font-family: 'Source Serif 4', serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
-  letter-spacing: 0.35em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   margin: 0;
   color: #888;
@@ -90,7 +90,7 @@
   border-left: 1px solid #333;
   background: #e8e8e8;
   color: #0d0d0d;
-  font-family: 'Inter', sans-serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -609,7 +609,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  color: #444;
+  color: #555;
   margin: 0 0 32px 0;
   padding: 20px 0;
   display: flex;
@@ -622,7 +622,7 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #333 20%, #333 80%, transparent);
+  background: linear-gradient(90deg, transparent, #3a3a3a 20%, #3a3a3a 80%, transparent);
 }
 
 .scoresGrid {
