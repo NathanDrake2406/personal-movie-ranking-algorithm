@@ -596,6 +596,11 @@ async function fetchDoubanRating(doubanId: string): Promise<{ rating: number | n
 }
 
 async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
+  // Check cache first (24h TTL for successful results)
+  const cacheKey = ctx.movie.imdbId;
+  const cached = doubanCache.get(cacheKey);
+  if (cached) return cached;
+
   try {
     // Resolve Douban ID using waterfall (Wikidata → Suggest API → Subject Search → Global Search → Google)
     const { id: doubanId, method } = await resolveDoubanId(ctx.movie.imdbId, ctx.wikidata.douban, ctx.movie.title);
@@ -623,7 +628,7 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
       };
     }
 
-    return normalizeScore({
+    const result = normalizeScore({
       source: 'douban',
       label: 'Douban',
       normalized: null,
@@ -633,6 +638,13 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
       // Include which method found the ID (useful for debugging)
       fromFallback: method !== 'wikidata',
     });
+
+    // Cache only successful results (with a score)
+    if (result.normalized != null) {
+      doubanCache.set(cacheKey, result);
+    }
+
+    return result;
   } catch (err) {
     return {
       source: 'douban',
@@ -719,3 +731,4 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
 }
 
 const scoreCache = new MemoryCache<ScorePayload>(5 * 60 * 1000, 500); // 5 min TTL, 500 max
+const doubanCache = new MemoryCache<SourceScore>(24 * 60 * 60 * 1000, 500); // 24h TTL for Douban
