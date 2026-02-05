@@ -156,7 +156,7 @@ async function fetchAllocine(ctx: FetcherContext): Promise<SourceScore[]> {
 async function fetchRottenTomatoes(
   ctx: FetcherContext,
   fallbackValue?: number | null,
-): Promise<SourceScore[]> {
+): Promise<{ scores: SourceScore[]; consensus: RTConsensus }> {
   // Wikidata P1258 may include the "m/" prefix, strip it if present
   const slug = ctx.wikidata.rottenTomatoes?.replace(/^m\//, '') || slugifyTitle(ctx.movie.title);
   try {
@@ -171,6 +171,7 @@ async function fetchRottenTomatoes(
     let avgTop: number | null = null;
     let allCriticsCount: number | null = null;
     let topCriticsCount: number | null = null;
+    let consensus: RTConsensus = {};
 
     // If percentage missing, fall back to average rating scraped from HTML
     if (value == null) {
@@ -182,6 +183,7 @@ async function fetchRottenTomatoes(
       avgTop = criticsParsed.criticsAvgTop;
       allCriticsCount = criticsParsed.allCriticsCount;
       topCriticsCount = criticsParsed.topCriticsCount;
+      consensus = parseRTConsensus(html);
       if (avgAll != null) value = avgAll;
     }
 
@@ -224,7 +226,7 @@ async function fetchRottenTomatoes(
       );
     }
 
-    return scores;
+    return { scores, consensus };
   } catch (err) {
     // Try HTML scrape even if API failed (404/403/etc.)
     try {
@@ -233,6 +235,7 @@ async function fetchRottenTomatoes(
       });
       const criticsParsed = parseRTCriticsHtml(html);
       const audienceParsed = parseRTAudienceHtml(html);
+      const consensus = parseRTConsensus(html);
 
       const { tomatometer, criticsAvgAll: avgAll, criticsAvgTop: avgTop, allCriticsCount, topCriticsCount } = criticsParsed;
       const { audienceAvg, isVerifiedAudience, audienceCount } = audienceParsed;
@@ -288,7 +291,7 @@ async function fetchRottenTomatoes(
             }),
           );
         }
-        return scores;
+        return { scores, consensus };
       }
     } catch (scrapeErr) {
       console.error('[RT HTML scrape failed]', (scrapeErr as Error).message);
@@ -296,25 +299,31 @@ async function fetchRottenTomatoes(
     }
 
     if (fallbackValue != null) {
-      return [
-        normalizeScore({
+      return {
+        scores: [
+          normalizeScore({
+            source: 'rotten_tomatoes',
+            label: 'RT Tomatometer',
+            normalized: null,
+            raw: { value: fallbackValue, scale: '0-100' },
+            fromFallback: true,
+            error: undefined,
+          }),
+        ],
+        consensus: {},
+      };
+    }
+    return {
+      scores: [
+        {
           source: 'rotten_tomatoes',
           label: 'RT Tomatometer',
           normalized: null,
-          raw: { value: fallbackValue, scale: '0-100' },
-          fromFallback: true,
-          error: undefined,
-        }),
-      ];
-    }
-    return [
-      {
-        source: 'rotten_tomatoes',
-        label: 'RT Tomatometer',
-        normalized: null,
-        error: (err as Error).message,
-      },
-    ];
+          error: (err as Error).message,
+        },
+      ],
+      consensus: {},
+    };
   }
 }
 
