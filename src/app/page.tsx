@@ -239,7 +239,7 @@ const RTScoreCard = memo(function RTScoreCard({
 });
 
 type ThemesSectionProps = {
-  themes: Array<{ label: string; sentiment: 'positive' | 'negative' }>;
+  themes: Array<{ label: string; sentiment: 'positive' | 'negative' | 'neutral' }>;
   summary?: string;
   imdbUrl?: string;
 };
