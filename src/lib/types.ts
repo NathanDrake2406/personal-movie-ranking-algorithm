@@ -47,9 +47,21 @@ export type OverallScore = {
   disagreement: number; // std dev of source scores (0-100)
 };
 
+export type ImdbTheme = {
+  label: string;
+  sentiment: 'positive' | 'negative';
+};
+
+export type RTConsensus = {
+  critics?: string;
+  audience?: string;
+};
+
 export type ScorePayload = {
   movie: MovieInfo;
   sources: SourceScore[];
   overall: OverallScore | null;
   missingSources?: string[];
+  themes?: ImdbTheme[];
+  consensus?: RTConsensus;
 };
