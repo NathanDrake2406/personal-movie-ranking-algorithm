@@ -243,58 +243,97 @@ const RTScoreCard = memo(function RTScoreCard({
 });
 
 type ThemesSectionProps = {
-  themes: Array<{ label: string; sentiment: 'positive' | 'negative' | 'neutral' }>;
-  summary?: string;
+  themes: Array<{ id: string; label: string; sentiment: 'positive' | 'negative' | 'neutral' }>;
+  imdbId: string;
   imdbUrl?: string;
 };
 
-const ThemesSection = memo(function ThemesSection({ themes, summary, imdbUrl }: ThemesSectionProps) {
-  if (themes.length === 0 && !summary) return null;
+const ThemesSection = memo(function ThemesSection({ themes, imdbId, imdbUrl }: ThemesSectionProps) {
+  const [activeThemeId, setActiveThemeId] = useState<string | null>(null);
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loadingThemeId, setLoadingThemeId] = useState<string | null>(null);
+
+  const handleChipClick = useCallback(
+    async (theme: ThemesSectionProps['themes'][number]) => {
+      if (activeThemeId === theme.id) {
+        setActiveThemeId(null);
+        return;
+      }
+
+      setActiveThemeId(theme.id);
+
+      if (summaries[theme.id] || loadingThemeId === theme.id) return;
+
+      setLoadingThemeId(theme.id);
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[theme.id];
+        return next;
+      });
+
+      try {
+        const res = await fetch(
+          `/api/imdb-theme?imdbId=${encodeURIComponent(imdbId)}&themeId=${encodeURIComponent(theme.id)}`,
+        );
+        if (!res.ok) {
+          throw new Error(`Request failed: ${res.status}`);
+        }
+        const json = (await res.json()) as { summary?: string };
+        if (!json.summary) throw new Error('Summary unavailable');
+        setSummaries((prev) => ({ ...prev, [theme.id]: json.summary as string }));
+      } catch (err) {
+        setErrors((prev) => ({ ...prev, [theme.id]: (err as Error).message }));
+      } finally {
+        setLoadingThemeId((prev) => (prev === theme.id ? null : prev));
+      }
+    },
+    [activeThemeId, imdbId, loadingThemeId, summaries],
+  );
+
+  if (themes.length === 0) return null;
+
+  const activeSummary = activeThemeId ? summaries[activeThemeId] : null;
+  const activeError = activeThemeId ? errors[activeThemeId] : null;
+  const isLoading = activeThemeId && loadingThemeId === activeThemeId;
 
   return (
     <div className={styles.themesSection}>
-      {themes.length > 0 && (
-        <>
-          <p className={styles.themesLabel}>What resonated with audiences</p>
-          <div className={styles.themesGrid}>
-            {themes.map((theme) => (
-              <span
-                key={theme.label}
-                className={`${styles.themeChip} ${
-                  theme.sentiment === 'positive' ? styles.themeChipPositive :
-                  theme.sentiment === 'negative' ? styles.themeChipNegative :
-                  styles.themeChipNeutral
-                }`}
-              >
-                {theme.label}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-      {summary && (
+      <p className={styles.themesLabel}>What resonated with audiences</p>
+      <div className={styles.themesGrid}>
+        {themes.map((theme) => (
+          <button
+            key={theme.id}
+            type="button"
+            className={`${styles.themeChip} ${
+              theme.sentiment === 'positive'
+                ? styles.themeChipPositive
+                : theme.sentiment === 'negative'
+                ? styles.themeChipNegative
+                : styles.themeChipNeutral
+            } ${activeThemeId === theme.id ? styles.themeChipActive : ''}`}
+            onClick={() => handleChipClick(theme)}
+          >
+            {theme.label}
+          </button>
+        ))}
+      </div>
+      {activeThemeId && (
         <div className={styles.themeSummary}>
-          <p>{summary}</p>
+          {isLoading && <p className={styles.themeSummaryLoading}>Loading summary…</p>}
+          {!isLoading && activeError && (
+            <p className={styles.themeSummaryError}>Summary unavailable. Try the IMDb link below.</p>
+          )}
+          {!isLoading && !activeError && activeSummary && <p>{activeSummary}</p>}
         </div>
       )}
-      <span className={styles.themesFooter}>Based on audience reviews</span>
-    </div>
-  );
-});
-
-type ImdbSummarySectionProps = {
-  summary: string;
-  imdbUrl?: string;
-};
-
-const ImdbSummarySection = memo(function ImdbSummarySection({ summary, imdbUrl }: ImdbSummarySectionProps) {
-  return (
-    <div className={styles.consensusSection}>
-      <div className={styles.consensusBlock}>
-        <p className={styles.consensusLabel}>What Audiences Say</p>
-        <p className={styles.consensusText}>{summary}</p>
-      </div>
-      <span className={styles.consensusFooter}>Based on audience reviews</span>
+      {imdbUrl ? (
+        <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.themesFooter}>
+          AI-generated from IMDb user reviews →
+        </a>
+      ) : (
+        <span className={styles.themesFooter}>Based on audience reviews</span>
+      )}
     </div>
   );
 });
@@ -665,7 +704,7 @@ export default function Home() {
               {data.themes && data.themes.length > 0 && (
                 <ThemesSection
                   themes={data.themes}
-                  summary={data.imdbSummary}
+                  imdbId={data.movie.imdbId}
                   imdbUrl={`https://www.imdb.com/title/${data.movie.imdbId}/`}
                 />
               )}

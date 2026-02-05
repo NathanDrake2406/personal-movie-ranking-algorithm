@@ -12,6 +12,7 @@ import {
   parseRTAudienceHtml,
   parseAllocineHtml,
   parseImdbThemes,
+  parseImdbThemeSummaryResponse,
   parseRTConsensus,
 } from './parsers';
 
@@ -225,8 +226,8 @@ describe('parsers', () => {
       `;
       const result = parseImdbThemes(html);
       expect(result).toEqual([
-        { label: 'Authentic emotion', sentiment: 'positive' },
-        { label: 'Cinematography', sentiment: 'positive' },
+        { id: 'authentic-emotion', label: 'Authentic emotion', sentiment: 'positive' },
+        { id: 'cinematography', label: 'Cinematography', sentiment: 'positive' },
       ]);
     });
 
@@ -237,15 +238,94 @@ describe('parsers', () => {
       `;
       const result = parseImdbThemes(html);
       expect(result).toEqual([
-        { label: 'Performance', sentiment: 'positive' },
-        { label: 'Pacing', sentiment: 'negative' },
+        { id: 'performance', label: 'Performance', sentiment: 'positive' },
+        { id: 'pacing', label: 'Pacing', sentiment: 'negative' },
       ]);
+    });
+
+    it('prefers __NEXT_DATA__ theme metadata when available', () => {
+      const data = {
+        props: {
+          pageProps: {
+            mainColumnData: {
+              reviewSummary: {
+                themes: [
+                  { id: 'theme-123', label: 'Cinematography', sentiment: 'POSITIVE' },
+                ],
+              },
+            },
+          },
+        },
+      };
+      const html = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(data)}</script>`;
+      const result = parseImdbThemes(html);
+      expect(result).toEqual([{ id: 'theme-123', label: 'Cinematography', sentiment: 'positive' }]);
+    });
+
+    it('uses __NEXT_DATA__ theme id to enrich aria-label chips', () => {
+      const data = {
+        props: {
+          pageProps: {
+            mainColumnData: {
+              reviewSummary: {
+                themes: [
+                  { themeId: 'theme-456', label: 'Cinematography' },
+                ],
+              },
+            },
+          },
+        },
+      };
+      const html = `
+        <script id="__NEXT_DATA__" type="application/json">${JSON.stringify(data)}</script>
+        <button aria-label="Cinematography positive sentiment"></button>
+      `;
+      const result = parseImdbThemes(html);
+      expect(result).toEqual([{ id: 'theme-456', label: 'Cinematography', sentiment: 'positive' }]);
     });
 
     it('returns empty array when no themes found', () => {
       const html = '<html>No themes here</html>';
       const result = parseImdbThemes(html);
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('parseImdbThemeSummaryResponse', () => {
+    it('extracts summary tied to theme id', () => {
+      const data = {
+        data: {
+          themeSummary: {
+            id: 'theme-123',
+            plaidHtml: 'Reviewers say the cinematography dazzles. AI-generated from user reviews',
+          },
+        },
+      };
+      const result = parseImdbThemeSummaryResponse(data, 'theme-123');
+      expect(result).toBe('Reviewers say the cinematography dazzles.');
+    });
+
+    it('extracts summary from nested value object', () => {
+      const data = {
+        data: {
+          title: {
+            reviewSummary: {
+              themes: [
+                {
+                  themeId: 'musical-score',
+                  summary: {
+                    value: {
+                      plaidHtml: 'Reviewers say the score is exceptional.',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+      const result = parseImdbThemeSummaryResponse(data, 'musical-score');
+      expect(result).toBe('Reviewers say the score is exceptional.');
     });
   });
 

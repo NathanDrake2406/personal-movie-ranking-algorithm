@@ -816,8 +816,23 @@
 
 .themeChip {
   padding: 6px 12px;
+  background: transparent;
   border: 1px solid;
   font-size: 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.themeChip:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.themeChipActive {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
 
 .themeChipPositive {
@@ -850,6 +865,14 @@
 
 .themeSummary p {
   margin: 0;
+}
+
+.themeSummaryLoading {
+  color: #999;
+}
+
+.themeSummaryError {
+  color: #c97a7a;
 }
 
 .themesFooter {

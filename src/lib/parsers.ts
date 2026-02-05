@@ -160,18 +160,129 @@ export function parseRTAudienceHtml(html: string): ParsedRTAudience {
   return { audienceAvg, isVerifiedAudience, audienceCount };
 }
 
-export function parseImdbThemes(html: string): ImdbTheme[] {
-  const matches = html.matchAll(/aria-label="([^"]+) (positive|negative|neutral) sentiment"/g);
-  const themes: ImdbTheme[] = [];
+const THEME_LABEL_KEYS = ['label', 'name', 'displayText', 'text', 'title'];
+const THEME_ID_KEYS = ['id', 'themeId', 'topicId', 'key', 'slug', 'value'];
 
-  for (const match of matches) {
-    themes.push({
-      label: match[1],
-      sentiment: match[2] as 'positive' | 'negative' | 'neutral',
-    });
+function slugifyThemeLabel(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .trim();
+}
+
+function normalizeThemeLabel(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+function extractNextData(html: string): unknown | null {
+  const match = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match?.[1]) return null;
+  try {
+    return JSON.parse(match[1]);
+  } catch {
+    return null;
+  }
+}
+
+function buildThemeIdMap(data: unknown): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!data || typeof data !== 'object') return map;
+
+  const queue: unknown[] = [data];
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 5000) {
+    const current = queue.shift();
+    inspected += 1;
+    if (!current || typeof current !== 'object') continue;
+
+    const obj = current as Record<string, unknown>;
+    const label = pickStringField(obj, THEME_LABEL_KEYS);
+    const rawId = pickStringField(obj, THEME_ID_KEYS);
+    if (label && rawId) {
+      map.set(normalizeThemeLabel(label), rawId);
+    }
+
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === 'object') queue.push(value);
+    }
   }
 
-  return themes;
+  return map;
+}
+
+function pickStringField(obj: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = obj[key];
+    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+  }
+  return null;
+}
+
+function normalizeSentiment(value: unknown): 'positive' | 'negative' | 'neutral' | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.toLowerCase();
+  if (normalized.includes('positive')) return 'positive';
+  if (normalized.includes('negative')) return 'negative';
+  if (normalized.includes('neutral')) return 'neutral';
+  return null;
+}
+
+function parseImdbThemesFromNextData(data: unknown): ImdbTheme[] {
+  if (!data || typeof data !== 'object') return [];
+
+  const results: ImdbTheme[] = [];
+  const seen = new Set<string>();
+  const queue: unknown[] = [data];
+  let inspected = 0;
+
+  while (queue.length > 0 && inspected < 5000) {
+    const current = queue.shift();
+    inspected += 1;
+    if (!current || typeof current !== 'object') continue;
+
+    const obj = current as Record<string, unknown>;
+    const sentiment = normalizeSentiment(obj.sentiment ?? obj.tone ?? obj.polarity);
+    const label = pickStringField(obj, THEME_LABEL_KEYS);
+    if (sentiment && label) {
+      const rawId = pickStringField(obj, THEME_ID_KEYS);
+      const id = rawId && rawId.length > 0 ? rawId : slugifyThemeLabel(label);
+      if (!seen.has(id)) {
+        results.push({ id, label, sentiment });
+        seen.add(id);
+      }
+    }
+
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === 'object') queue.push(value);
+    }
+  }
+
+  return results;
+}
+
+export function parseImdbThemes(html: string): ImdbTheme[] {
+  const nextData = extractNextData(html);
+  const themeIdMap = buildThemeIdMap(nextData);
+
+  const matches = html.matchAll(/aria-label="([^"]+) (positive|negative|neutral) sentiment"/g);
+  const themes: ImdbTheme[] = [];
+  const seen = new Set<string>();
+
+  for (const match of matches) {
+    const label = match[1];
+    const sentiment = match[2] as 'positive' | 'negative' | 'neutral';
+    const id = themeIdMap.get(normalizeThemeLabel(label)) || slugifyThemeLabel(label);
+    if (seen.has(id)) continue;
+    themes.push({ id, label, sentiment });
+    seen.add(id);
+  }
+
+  if (themes.length > 0) return themes;
+
+  const fromNextData = parseImdbThemesFromNextData(nextData);
+  return fromNextData;
 }
 
 export function parseImdbSummary(html: string): string | null {
@@ -195,6 +306,80 @@ export function parseImdbSummary(html: string): string | null {
   } catch {
     return null;
   }
+}
+
+export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): string | null {
+  if (!data || typeof data !== 'object') return null;
+
+  const cleanSummary = (raw: string): string =>
+    decodeHtmlEntities(stripTags(raw))
+      .replace(/\s*AI-generated from (?:the text of )?user reviews.*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const summaryFromNode = (node: unknown): string | null => {
+    if (!node || typeof node !== 'object') return null;
+    const obj = node as Record<string, unknown>;
+    const candidate =
+      obj.plaidHtml ??
+      obj.plainText ??
+      obj.text ??
+      obj.value ??
+      obj.summary ??
+      obj.description ??
+      null;
+    if (typeof candidate === 'string') return cleanSummary(candidate);
+    if (candidate && typeof candidate === 'object') {
+      const inner = candidate as Record<string, unknown>;
+      const innerCandidate = inner.plaidHtml ?? inner.plainText ?? inner.text ?? inner.value ?? null;
+      if (typeof innerCandidate === 'string') return cleanSummary(innerCandidate);
+      if (innerCandidate && typeof innerCandidate === 'object') {
+        const deeper = innerCandidate as Record<string, unknown>;
+        const deepCandidate = deeper.plaidHtml ?? deeper.plainText ?? deeper.text ?? null;
+        if (typeof deepCandidate === 'string') return cleanSummary(deepCandidate);
+      }
+    }
+    return null;
+  };
+
+  const matchesThemeId = (node: Record<string, unknown>): boolean => {
+    const candidates = [node.id, node.themeId, node.topicId, node.key, node.slug, node.value];
+    return candidates.some((value) => {
+      if (typeof value === 'string') return value === themeId;
+      if (typeof value === 'number') return String(value) === themeId;
+      return false;
+    });
+  };
+
+  const queue: unknown[] = [data];
+  let inspected = 0;
+  while (queue.length > 0 && inspected < 5000) {
+    const current = queue.shift();
+    inspected += 1;
+    if (!current || typeof current !== 'object') continue;
+    const obj = current as Record<string, unknown>;
+
+    if (matchesThemeId(obj)) {
+      const direct = summaryFromNode(obj);
+      if (direct) return direct;
+
+      for (const value of Object.values(obj)) {
+        const nested = summaryFromNode(value);
+        if (nested) return nested;
+      }
+    }
+
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === 'object') queue.push(value);
+    }
+  }
+
+  // Fallback: look for any "Reviewers say" string in response
+  const responseText = JSON.stringify(data);
+  const reviewersMatch = responseText.match(/Reviewers say[^"]{20,600}/i);
+  if (reviewersMatch?.[0]) return cleanSummary(reviewersMatch[0]);
+
+  return null;
 }
 
 export function parseRTConsensus(html: string): RTConsensus {

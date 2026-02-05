@@ -48,6 +48,7 @@ export type OverallScore = {
 };
 
 export type ImdbTheme = {
+  id: string;
   label: string;
   sentiment: 'positive' | 'negative' | 'neutral';
 };
