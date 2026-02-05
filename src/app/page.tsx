@@ -48,9 +48,10 @@ type PosterProps = {
   height: number;
   className?: string;
   skeletonClassName?: string;
+  responsive?: boolean;
 };
 
-const Poster = memo(function Poster({ src, alt, width, height, className, skeletonClassName }: PosterProps) {
+const Poster = memo(function Poster({ src, alt, width, height, className, skeletonClassName, responsive }: PosterProps) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -59,8 +60,11 @@ const Poster = memo(function Poster({ src, alt, width, height, className, skelet
     requestAnimationFrame(() => setLoaded(true));
   };
 
+  // When responsive, let CSS handle sizing; otherwise use fixed dimensions
+  const containerStyle = responsive ? undefined : { width, height };
+
   return (
-    <div className={styles.posterContainer} style={{ width, height }}>
+    <div className={styles.posterContainer} style={containerStyle}>
       {!loaded && !error && (
         <div className={`${styles.posterSkeleton} ${skeletonClassName || ''}`} />
       )}
@@ -642,6 +646,7 @@ export default function Home() {
                   height={540}
                   className={styles.poster}
                   skeletonClassName={styles.posterSkeletonLarge}
+                  responsive
                 />
               ) : (
                 <div className={styles.posterPlaceholder}>No poster</div>
