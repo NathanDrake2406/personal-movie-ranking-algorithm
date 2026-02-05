@@ -1,5 +1,7 @@
 // src/lib/parsers.ts
 
+import type { ImdbTheme } from './types';
+
 /** Parsed rating values before normalization */
 export type ParsedRating = {
   value: number | null;
@@ -156,4 +158,18 @@ export function parseRTAudienceHtml(html: string): ParsedRTAudience {
     : (matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null);
 
   return { audienceAvg, isVerifiedAudience, audienceCount };
+}
+
+export function parseImdbThemes(html: string): ImdbTheme[] {
+  const matches = html.matchAll(/aria-label="([^"]+) (positive|negative) sentiment"/g);
+  const themes: ImdbTheme[] = [];
+
+  for (const match of matches) {
+    themes.push({
+      label: match[1],
+      sentiment: match[2] as 'positive' | 'negative',
+    });
+  }
+
+  return themes;
 }

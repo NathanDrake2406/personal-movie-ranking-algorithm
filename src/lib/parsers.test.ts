@@ -11,6 +11,7 @@ import {
   parseRTCriticsHtml,
   parseRTAudienceHtml,
   parseAllocineHtml,
+  parseImdbThemes,
 } from './parsers';
 
 describe('parsers', () => {
@@ -208,6 +209,42 @@ describe('parsers', () => {
       const result = parseRTAudienceHtml(html);
       expect(result.audienceAvg).toBeNull();
       expect(result.isVerifiedAudience).toBe(false);
+    });
+  });
+
+  describe('parseImdbThemes', () => {
+    it('extracts themes with positive sentiment', () => {
+      const html = `
+        <button aria-label="Authentic emotion positive sentiment">
+          <span class="ipc-chip__text">Authentic emotion</span>
+        </button>
+        <button aria-label="Cinematography positive sentiment">
+          <span class="ipc-chip__text">Cinematography</span>
+        </button>
+      `;
+      const result = parseImdbThemes(html);
+      expect(result).toEqual([
+        { label: 'Authentic emotion', sentiment: 'positive' },
+        { label: 'Cinematography', sentiment: 'positive' },
+      ]);
+    });
+
+    it('extracts themes with mixed sentiment', () => {
+      const html = `
+        <button aria-label="Performance positive sentiment"></button>
+        <button aria-label="Pacing negative sentiment"></button>
+      `;
+      const result = parseImdbThemes(html);
+      expect(result).toEqual([
+        { label: 'Performance', sentiment: 'positive' },
+        { label: 'Pacing', sentiment: 'negative' },
+      ]);
+    });
+
+    it('returns empty array when no themes found', () => {
+      const html = '<html>No themes here</html>';
+      const result = parseImdbThemes(html);
+      expect(result).toEqual([]);
     });
   });
 });
