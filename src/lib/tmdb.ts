@@ -60,11 +60,36 @@ export async function getTmdbDetails(tmdbId: number, apiKey: string) {
 }
 
 export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
-  const director = movie.credits?.crew?.find((c) => c.job === 'Director')?.name;
+  const crew = movie.credits?.crew ?? [];
+
+  // Get all directors (some films have multiple, e.g., Coen Brothers)
+  const directors = crew
+    .filter((c) => c.job === 'Director')
+    .map((c) => c.name);
+
+  // Get writers (Screenplay, Writer, Story) - deduplicated
+  const writerJobs = ['Screenplay', 'Writer', 'Story'];
+  const writers = [...new Set(
+    crew
+      .filter((c) => writerJobs.includes(c.job))
+      .map((c) => c.name)
+  )].slice(0, 3); // Limit to 3 writers
+
+  // Get cinematographer (Director of Photography)
+  const cinematographer = crew.find(
+    (c) => c.job === 'Director of Photography' || c.job === 'Cinematography'
+  )?.name;
+
+  // Get composer
+  const composer = crew.find(
+    (c) => c.job === 'Original Music Composer' || c.job === 'Music'
+  )?.name;
+
   const cast = movie.credits?.cast
     ?.sort((a, b) => a.order - b.order)
-    .slice(0, 3)
+    .slice(0, 4)
     .map((c) => c.name);
+
   return {
     imdbId: movie.imdb_id ?? '',
     title: movie.title,
@@ -74,7 +99,11 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
     overview: movie.overview,
     runtime: movie.runtime,
     genres: movie.genres?.map((g) => g.name),
-    director,
+    director: directors[0], // Keep backward compatibility
+    directors: directors.length > 0 ? directors : undefined,
+    writers: writers.length > 0 ? writers : undefined,
+    cinematographer,
+    composer,
     cast,
   };
 }

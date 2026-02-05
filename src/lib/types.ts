@@ -34,6 +34,10 @@ export type MovieInfo = {
   runtime?: number;
   genres?: string[];
   director?: string;
+  directors?: string[]; // Multiple directors (e.g., Coen Brothers)
+  writers?: string[];
+  cinematographer?: string;
+  composer?: string;
   cast?: string[];
 };
 

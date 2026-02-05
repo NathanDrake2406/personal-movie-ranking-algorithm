@@ -689,12 +689,41 @@ export default function Home() {
               ) : (
                 <div className={styles.posterPlaceholder}>No poster</div>
               )}
-              {(data.movie.director || data.movie.cast?.length) && (
-                <p className={styles.posterCredits}>
-                  {data.movie.director && `Directed by ${data.movie.director}`}
-                  {data.movie.director && data.movie.cast?.length ? ' · ' : ''}
-                  {data.movie.cast?.length ? `Starring ${data.movie.cast.join(', ')}` : ''}
-                </p>
+              {(data.movie.directors?.length || data.movie.director || data.movie.writers?.length || data.movie.cinematographer || data.movie.composer || data.movie.cast?.length) && (
+                <div className={styles.posterCredits}>
+                  {(data.movie.directors?.length || data.movie.director) ? (
+                    <p className={styles.creditLine}>
+                      <span className={styles.creditLabel}>Directed by</span>
+                      <span className={styles.creditNames}>
+                        {data.movie.directors?.length ? data.movie.directors.join(', ') : data.movie.director}
+                      </span>
+                    </p>
+                  ) : null}
+                  {data.movie.cast?.length ? (
+                    <p className={styles.creditLine}>
+                      <span className={styles.creditLabel}>Starring</span>
+                      <span className={styles.creditNames}>{data.movie.cast.join(', ')}</span>
+                    </p>
+                  ) : null}
+                  {data.movie.writers?.length ? (
+                    <p className={styles.creditLine}>
+                      <span className={styles.creditLabel}>Written by</span>
+                      <span className={styles.creditNames}>{data.movie.writers.join(', ')}</span>
+                    </p>
+                  ) : null}
+                  {data.movie.cinematographer && (
+                    <p className={styles.creditLine}>
+                      <span className={styles.creditLabel}>Cinematography</span>
+                      <span className={styles.creditNames}>{data.movie.cinematographer}</span>
+                    </p>
+                  )}
+                  {data.movie.composer && (
+                    <p className={styles.creditLine}>
+                      <span className={styles.creditLabel}>Music</span>
+                      <span className={styles.creditNames}>{data.movie.composer}</span>
+                    </p>
+                  )}
+                </div>
               )}
             </div>
             <div className={styles.movieInfoTop}>
