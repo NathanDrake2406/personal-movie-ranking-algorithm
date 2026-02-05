@@ -100,7 +100,7 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
 
   const cast = movie.credits?.cast
     ?.sort((a, b) => a.order - b.order)
-    .slice(0, 4)
+    .slice(0, 5)
     .map((c) => c.name);
 
   return {
