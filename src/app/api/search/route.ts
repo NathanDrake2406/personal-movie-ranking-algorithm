@@ -62,15 +62,14 @@ export async function GET(request: Request) {
       combinedResults = noYearResults.flatMap((r) => r.results);
     }
 
-    // Dedupe by movie ID
-    const seen = new Map<number, (typeof combinedResults)[0]>();
+    // Dedupe by movie ID into an index Map for O(1) lookups
+    const movieIndex = new Map<number, (typeof combinedResults)[0]>();
     for (const movie of combinedResults) {
-      if (!seen.has(movie.id)) seen.set(movie.id, movie);
+      if (!movieIndex.has(movie.id)) movieIndex.set(movie.id, movie);
     }
-    const data = { results: Array.from(seen.values()) };
 
     // Convert to SearchResult format for ranking
-    const searchResults: SearchResult[] = data.results.map((movie) => ({
+    const searchResults: SearchResult[] = Array.from(movieIndex.values()).map((movie) => ({
       id: movie.id,
       title: movie.title,
       release_date: movie.release_date,
@@ -81,9 +80,9 @@ export async function GET(request: Request) {
     // Re-rank results using smart ranking
     const ranked = rankResults(searchResults, searchTitle, year);
 
-    // Map to response format
+    // Map to response format (O(1) lookup via movieIndex)
     const results = ranked.slice(0, 10).map((movie) => {
-      const original = data.results.find((m) => m.id === movie.id)!;
+      const original = movieIndex.get(movie.id)!;
       return {
         id: movie.id,
         title: movie.title,
