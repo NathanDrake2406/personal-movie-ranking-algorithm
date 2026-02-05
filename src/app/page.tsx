@@ -245,10 +245,9 @@ const RTScoreCard = memo(function RTScoreCard({
 type ThemesSectionProps = {
   themes: Array<{ id: string; label: string; sentiment: 'positive' | 'negative' | 'neutral' }>;
   imdbId: string;
-  imdbUrl?: string;
 };
 
-const ThemesSection = memo(function ThemesSection({ themes, imdbId, imdbUrl }: ThemesSectionProps) {
+const ThemesSection = memo(function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
   const [activeThemeId, setActiveThemeId] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -705,7 +704,6 @@ export default function Home() {
                 <ThemesSection
                   themes={data.themes}
                   imdbId={data.movie.imdbId}
-                  imdbUrl={`https://www.imdb.com/title/${data.movie.imdbId}/`}
                 />
               )}
               {data.consensus && (
