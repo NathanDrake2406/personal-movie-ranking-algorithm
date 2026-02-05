@@ -124,7 +124,8 @@ describe('Home page', () => {
 
     it('ignores stale responses when AbortController cancels the request', async () => {
       const user = userEvent.setup();
-      let movieAResolver: ((value: Response) => void) | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      let _movieAResolver: ((value: Response) => void) | null = null;
       let movieBResolver: ((value: Response) => void) | null = null;
 
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
@@ -153,7 +154,7 @@ describe('Home page', () => {
             }
 
             if (movieId === 1) {
-              movieAResolver = resolve;
+              _movieAResolver = resolve;
             } else if (movieId === 2) {
               movieBResolver = resolve;
             }
