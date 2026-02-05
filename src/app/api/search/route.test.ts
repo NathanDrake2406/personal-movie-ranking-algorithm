@@ -145,4 +145,96 @@ describe('GET /api/search', () => {
     // "The Matrix" should rank highest (exact match after article removal)
     expect(data.results[0].id).toBe(2);
   });
+
+  it('falls back to & variant when original returns empty', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      // Original query "Pride and Prejudice" returns empty
+      if (url.includes('Pride%20and%20Prejudice')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
+      }
+      // Variant "Pride & Prejudice" returns result
+      if (url.includes('Pride%20%26%20Prejudice') || url.includes('Pride%26Prejudice')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            results: [{ id: 1, title: 'Pride & Prejudice', release_date: '2005-11-11', popularity: 80 }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
+    });
+
+    const response = await GET(createRequest('Pride and Prejudice'));
+    const data = await response.json();
+
+    expect(data.results.length).toBe(1);
+    expect(data.results[0].title).toBe('Pride & Prejudice');
+  });
+
+  it('falls back to apostrophe-removed variant when original returns empty', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      // Original "Ocean's Eleven" returns empty
+      if (url.includes("Ocean's") || url.includes('Ocean%27s')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
+      }
+      // Variant "Oceans Eleven" returns result
+      if (url.includes('Oceans%20Eleven')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            results: [{ id: 2, title: "Ocean's Eleven", release_date: '2001-12-07', popularity: 70 }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
+    });
+
+    const response = await GET(createRequest("Ocean's Eleven"));
+    const data = await response.json();
+
+    expect(data.results.length).toBe(1);
+    expect(data.results[0].title).toBe("Ocean's Eleven");
+  });
+
+  it('dedupes results from multiple variants', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      // Original returns empty
+      if (url.includes('Spider-Man')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
+      }
+      // Both variants return the same movie
+      if (url.includes('Spider%20Man') || url.includes('SpiderMan')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            results: [{ id: 3, title: 'Spider-Man', release_date: '2002-05-03', popularity: 90 }],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) });
+    });
+
+    const response = await GET(createRequest('Spider-Man'));
+    const data = await response.json();
+
+    // Should have exactly 1 result, not 2 duplicates
+    expect(data.results.length).toBe(1);
+    expect(data.results[0].title).toBe('Spider-Man');
+  });
+
+  it('does not call variants when original query succeeds', async () => {
+    global.fetch = vi.fn().mockImplementation(() => {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          results: [{ id: 1, title: 'Pride & Prejudice', release_date: '2005-11-11', popularity: 80 }],
+        }),
+      });
+    });
+
+    await GET(createRequest('Pride & Prejudice'));
+
+    // Should only call once (original query succeeded)
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
