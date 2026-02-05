@@ -726,36 +726,38 @@ export default function Home() {
                 </div>
               )}
             </div>
-            <div className={styles.movieInfoTop}>
-              <h2 className={styles.movieTitle}>{data.movie.title}</h2>
-              <p className={styles.movieMeta}>
-                {[
-                  data.movie.year,
-                  data.movie.rating,
-                  data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
-                  data.movie.genres?.slice(0, 3).join(', '),
-                ].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            <div className={styles.movieInfoMiddle}>
-              {data.movie.overview && (
-                <p className={styles.movieOverview}>{data.movie.overview}</p>
-              )}
-              <div className={styles.verdictBox}>
-                <p className={styles.verdictLabel}>Our Verdict</p>
-                <p className={styles.verdictScore}>{formatScore(data.overall?.score ?? null)}</p>
+            <div className={styles.movieInfo}>
+              <div className={styles.movieInfoTop}>
+                <h2 className={styles.movieTitle}>{data.movie.title}</h2>
+                <p className={styles.movieMeta}>
+                  {[
+                    data.movie.year,
+                    data.movie.rating,
+                    data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
+                    data.movie.genres?.slice(0, 3).join(', '),
+                  ].filter(Boolean).join(' · ')}
+                </p>
               </div>
-            </div>
-            <div className={styles.movieInfoExtra}>
-              {data.themes && data.themes.length > 0 && (
-                <ThemesSection
-                  themes={data.themes}
-                  imdbId={data.movie.imdbId}
-                />
-              )}
-              {data.consensus && (
-                <ConsensusSection consensus={data.consensus} />
-              )}
+              <div className={styles.movieInfoMiddle}>
+                {data.movie.overview && (
+                  <p className={styles.movieOverview}>{data.movie.overview}</p>
+                )}
+                <div className={styles.verdictBox}>
+                  <p className={styles.verdictLabel}>Our Verdict</p>
+                  <p className={styles.verdictScore}>{formatScore(data.overall?.score ?? null)}</p>
+                </div>
+              </div>
+              <div className={styles.movieInfoExtra}>
+                {data.themes && data.themes.length > 0 && (
+                  <ThemesSection
+                    themes={data.themes}
+                    imdbId={data.movie.imdbId}
+                  />
+                )}
+                {data.consensus && (
+                  <ConsensusSection consensus={data.consensus} />
+                )}
+              </div>
             </div>
           </div>
 

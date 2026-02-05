@@ -465,7 +465,6 @@
 .movieHeader {
   display: grid;
   grid-template-columns: 360px 1fr;
-  grid-template-rows: auto auto auto;
   align-content: start;
   gap: 0 56px;
   padding: 64px 0;
@@ -474,7 +473,6 @@
 
 .posterWrapper {
   position: relative;
-  grid-row: 1 / -1;
   display: flex;
   flex-direction: column;
   animation: slideFromLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1);
@@ -564,18 +562,21 @@
   text-transform: uppercase;
 }
 
-.movieInfoTop {
+.movieInfo {
   grid-column: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.movieInfoTop {
   animation: slideFromRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards;
 }
 
 .movieInfoMiddle {
-  grid-column: 2;
   animation: slideFromRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s backwards;
 }
 
 .movieInfoExtra {
-  grid-column: 2;
   animation: slideFromRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;
 }
 
@@ -1072,6 +1073,10 @@
     flex-direction: column;
     align-items: center;
     gap: 24px;
+  }
+
+  .movieInfo {
+    display: contents;
   }
 
   .movieInfoTop {
