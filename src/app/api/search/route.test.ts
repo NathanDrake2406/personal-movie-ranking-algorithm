@@ -222,7 +222,7 @@ describe('GET /api/search', () => {
     expect(data.results[0].title).toBe('Spider-Man');
   });
 
-  it('does not call variants when original query succeeds', async () => {
+  it('always fetches variants in parallel and dedupes results', async () => {
     global.fetch = vi.fn().mockImplementation(() => {
       return Promise.resolve({
         ok: true,
@@ -232,9 +232,12 @@ describe('GET /api/search', () => {
       });
     });
 
-    await GET(createRequest('Pride & Prejudice'));
+    const response = await GET(createRequest('Pride & Prejudice'));
+    const data = await response.json();
 
-    // Should only call once (original query succeeded)
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    // Should call for original + "Pride and Prejudice" variant = 2 calls
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    // Results should be deduped to just 1 movie
+    expect(data.results.length).toBe(1);
   });
 });

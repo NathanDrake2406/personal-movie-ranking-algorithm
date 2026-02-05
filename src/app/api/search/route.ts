@@ -44,37 +44,30 @@ export async function GET(request: Request) {
     // Parse query to extract year
     const { title: searchTitle, year } = parseQuery(query);
 
-    // Fetch with year filter if present
-    let data = await fetchTMDB(tmdbKey, searchTitle, year);
+    // Generate query variants (e.g., & ↔ and, remove apostrophes, hyphens)
+    const variants = generateVariants(searchTitle);
+    const allQueries = [searchTitle, ...variants];
 
-    // Fallback: if year filter returns empty, retry without year
-    if (year && data.results.length === 0) {
-      data = await fetchTMDB(tmdbKey, searchTitle, null);
+    // Fetch all variants in parallel (with year filter if present)
+    const allResults = await Promise.all(
+      allQueries.map((q) => fetchTMDB(tmdbKey, q, year))
+    );
+    let combinedResults = allResults.flatMap((r) => r.results);
+
+    // Fallback: if year filter returns empty, retry all without year
+    if (year && combinedResults.length === 0) {
+      const noYearResults = await Promise.all(
+        allQueries.map((q) => fetchTMDB(tmdbKey, q, null))
+      );
+      combinedResults = noYearResults.flatMap((r) => r.results);
     }
 
-    // Fallback: if still empty, try query variants in parallel
-    if (data.results.length === 0) {
-      const variants = generateVariants(searchTitle);
-      if (variants.length > 0) {
-        const variantResults = await Promise.all(
-          variants.map((v) => fetchTMDB(tmdbKey, v, year))
-        );
-        // If year filter still empty, try variants without year
-        let combinedResults = variantResults.flatMap((r) => r.results);
-        if (combinedResults.length === 0 && year) {
-          const noYearResults = await Promise.all(
-            variants.map((v) => fetchTMDB(tmdbKey, v, null))
-          );
-          combinedResults = noYearResults.flatMap((r) => r.results);
-        }
-        // Dedupe by movie ID
-        const seen = new Map<number, (typeof data.results)[0]>();
-        for (const movie of combinedResults) {
-          if (!seen.has(movie.id)) seen.set(movie.id, movie);
-        }
-        data = { results: Array.from(seen.values()) };
-      }
+    // Dedupe by movie ID
+    const seen = new Map<number, (typeof combinedResults)[0]>();
+    for (const movie of combinedResults) {
+      if (!seen.has(movie.id)) seen.set(movie.id, movie);
     }
+    const data = { results: Array.from(seen.values()) };
 
     // Convert to SearchResult format for ranking
     const searchResults: SearchResult[] = data.results.map((movie) => ({
