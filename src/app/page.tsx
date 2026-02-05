@@ -320,20 +320,20 @@ const ThemesSection = memo(function ThemesSection({ themes, imdbId, imdbUrl }: T
       </div>
       {activeThemeId && (
         <div className={styles.themeSummary}>
-          {isLoading && <p className={styles.themeSummaryLoading}>Loading summary…</p>}
+          {isLoading && (
+            <div className={styles.themeSummaryLoading}>
+              <div className={styles.themeSummarySkeleton} />
+              <div className={styles.themeSummarySkeleton} />
+              <div className={styles.themeSummarySkeleton} />
+            </div>
+          )}
           {!isLoading && activeError && (
             <p className={styles.themeSummaryError}>Summary unavailable. Try the IMDb link below.</p>
           )}
           {!isLoading && !activeError && activeSummary && <p>{activeSummary}</p>}
         </div>
       )}
-      {imdbUrl ? (
-        <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.themesFooter}>
-          AI-generated from IMDb user reviews →
-        </a>
-      ) : (
-        <span className={styles.themesFooter}>Based on audience reviews</span>
-      )}
+      <span className={styles.themesFooter}>Based on audience reviews</span>
     </div>
   );
 });
