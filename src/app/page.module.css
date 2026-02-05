@@ -1082,7 +1082,7 @@
   .movieInfoTop {
     order: 1;
     width: 100%;
-    text-align: left;
+    text-align: center;
   }
 
   .movieTitle {
@@ -1090,18 +1090,27 @@
   }
 
   .posterWrapper {
-    order: 2;
-    width: 100%;
-    max-width: 280px;
+    display: contents;
   }
 
-  .movieInfoMiddle {
+  .posterWrapper .posterContainer {
+    order: 2;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .posterCredits {
     order: 3;
     width: 100%;
   }
 
-  .movieInfoExtra {
+  .movieInfoMiddle {
     order: 4;
+    width: 100%;
+  }
+
+  .movieInfoExtra {
+    order: 5;
     width: 100%;
   }
 }
