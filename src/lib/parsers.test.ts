@@ -12,6 +12,7 @@ import {
   parseRTAudienceHtml,
   parseAllocineHtml,
   parseImdbThemes,
+  parseRTConsensus,
 } from './parsers';
 
 describe('parsers', () => {
@@ -245,6 +246,55 @@ describe('parsers', () => {
       const html = '<html>No themes here</html>';
       const result = parseImdbThemes(html);
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('parseRTConsensus', () => {
+    it('extracts both critics and audience consensus', () => {
+      const html = `
+        <div id="critics-consensus" class="consensus">
+          <rt-text>Critics Consensus</rt-text>
+          <p>A thrilling masterpiece that redefines the genre.</p>
+        </div>
+        <div id="audience-consensus" class="consensus">
+          <rt-text>Audience Says</rt-text>
+          <p>Fans loved the epic scope and emotional depth.</p>
+        </div>
+      `;
+      const result = parseRTConsensus(html);
+      expect(result).toEqual({
+        critics: 'A thrilling masterpiece that redefines the genre.',
+        audience: 'Fans loved the epic scope and emotional depth.',
+      });
+    });
+
+    it('extracts critics only when no audience consensus', () => {
+      const html = `
+        <div id="critics-consensus" class="consensus">
+          <p>Smart, innovative, and thrilling.</p>
+        </div>
+      `;
+      const result = parseRTConsensus(html);
+      expect(result).toEqual({
+        critics: 'Smart, innovative, and thrilling.',
+        audience: undefined,
+      });
+    });
+
+    it('handles HTML entities and em tags', () => {
+      const html = `
+        <div id="critics-consensus" class="consensus">
+          <p>A film that&#39;s both <em>beautiful</em> and bold.</p>
+        </div>
+      `;
+      const result = parseRTConsensus(html);
+      expect(result.critics).toBe("A film that's both beautiful and bold.");
+    });
+
+    it('returns empty object when no consensus found', () => {
+      const html = '<html>No consensus</html>';
+      const result = parseRTConsensus(html);
+      expect(result).toEqual({});
     });
   });
 });

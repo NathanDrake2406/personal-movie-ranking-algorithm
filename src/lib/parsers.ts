@@ -1,6 +1,6 @@
 // src/lib/parsers.ts
 
-import type { ImdbTheme } from './types';
+import type { ImdbTheme, RTConsensus } from './types';
 
 /** Parsed rating values before normalization */
 export type ParsedRating = {
@@ -172,4 +172,40 @@ export function parseImdbThemes(html: string): ImdbTheme[] {
   }
 
   return themes;
+}
+
+export function parseRTConsensus(html: string): RTConsensus {
+  const result: RTConsensus = {};
+
+  // Extract critics consensus
+  const criticsMatch = html.match(
+    /<div[^>]*id="critics-consensus"[^>]*>[\s\S]*?<p>([^<]*(?:<em>[^<]*<\/em>[^<]*)*)<\/p>/
+  );
+  if (criticsMatch?.[1]) {
+    result.critics = decodeHtmlEntities(stripTags(criticsMatch[1]));
+  }
+
+  // Extract audience consensus
+  const audienceMatch = html.match(
+    /<div[^>]*id="audience-consensus"[^>]*>[\s\S]*?<p>([^<]*(?:<em>[^<]*<\/em>[^<]*)*)<\/p>/
+  );
+  if (audienceMatch?.[1]) {
+    result.audience = decodeHtmlEntities(stripTags(audienceMatch[1]));
+  }
+
+  return result;
+}
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]*>/g, '');
+}
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
 }
