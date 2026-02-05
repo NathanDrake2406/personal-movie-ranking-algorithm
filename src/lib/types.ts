@@ -49,7 +49,7 @@ export type OverallScore = {
 
 export type ImdbTheme = {
   label: string;
-  sentiment: 'positive' | 'negative';
+  sentiment: 'positive' | 'negative' | 'neutral';
 };
 
 export type RTConsensus = {
@@ -64,4 +64,5 @@ export type ScorePayload = {
   missingSources?: string[];
   themes?: ImdbTheme[];
   consensus?: RTConsensus;
+  imdbSummary?: string; // AI-generated summary from IMDb user reviews
 };

@@ -161,17 +161,40 @@ export function parseRTAudienceHtml(html: string): ParsedRTAudience {
 }
 
 export function parseImdbThemes(html: string): ImdbTheme[] {
-  const matches = html.matchAll(/aria-label="([^"]+) (positive|negative) sentiment"/g);
+  const matches = html.matchAll(/aria-label="([^"]+) (positive|negative|neutral) sentiment"/g);
   const themes: ImdbTheme[] = [];
 
   for (const match of matches) {
     themes.push({
       label: match[1],
-      sentiment: match[2] as 'positive' | 'negative',
+      sentiment: match[2] as 'positive' | 'negative' | 'neutral',
     });
   }
 
   return themes;
+}
+
+export function parseImdbSummary(html: string): string | null {
+  // Extract __NEXT_DATA__ JSON from the page
+  const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/);
+  if (!nextDataMatch?.[1]) return null;
+
+  try {
+    const data = JSON.parse(nextDataMatch[1]);
+    const plaidHtml = data?.props?.pageProps?.mainColumnData?.reviewSummary?.overall?.medium?.value?.plaidHtml;
+    if (!plaidHtml) return null;
+
+    // Decode HTML entities and clean up
+    return plaidHtml
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .trim();
+  } catch {
+    return null;
+  }
 }
 
 export function parseRTConsensus(html: string): RTConsensus {

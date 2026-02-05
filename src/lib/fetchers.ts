@@ -17,6 +17,7 @@ import {
   parseRTAudienceHtml,
   parseAllocineHtml,
   parseImdbThemes,
+  parseImdbSummary,
   parseRTConsensus,
 } from './parsers';
 import type { ImdbTheme, RTConsensus } from './types';
@@ -40,11 +41,43 @@ function slugifyTitle(title: string) {
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fallback: OmdbFallback; themes: ImdbTheme[] }> {
+async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fallback: OmdbFallback; themes: ImdbTheme[]; summary: string | null }> {
   const { omdbKeys } = getApiKeys(ctx.env);
   const imdbUrl = `https://www.imdb.com/title/${ctx.movie.imdbId}`;
 
-  // Layer 1: Try OMDB API with key rotation
+  // Always fetch IMDb HTML for themes and summary (only exist in HTML, not APIs)
+  let themes: ImdbTheme[] = [];
+  let summary: string | null = null;
+  try {
+    const html = await fetchText(imdbUrl, {
+      headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en-US,en;q=0.9' },
+    });
+    themes = parseImdbThemes(html);
+    summary = parseImdbSummary(html);
+
+    // Also try to parse rating from HTML as a fallback
+    const parsed = parseImdbHtml(html);
+    if (parsed.value != null) {
+      // If we got rating from HTML, use it directly (skip OMDB)
+      return {
+        score: normalizeScore({
+          source: 'imdb',
+          label: 'IMDb',
+          normalized: null,
+          raw: { value: parsed.value, scale: '0-10' },
+          count: parsed.count,
+          url: imdbUrl,
+        }),
+        fallback: {},
+        themes,
+        summary,
+      };
+    }
+  } catch {
+    // HTML scrape failed, will try OMDB below
+  }
+
+  // Layer 2: OMDB API fallback for rating (themes/summary already extracted above)
   if (omdbKeys.length > 0) {
     try {
       const data = await fetchOmdbByIdWithRotation(ctx.movie.imdbId, omdbKeys);
@@ -58,42 +91,18 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
           count: ratings.imdbVotes,
           url: imdbUrl,
         });
-        return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic }, themes: [] };
+        return { score, fallback: { rt: ratings.rottenTomatoes, metacritic: ratings.metacritic }, themes, summary };
       }
     } catch {
-      // All OMDB keys failed, fall through to scrape
+      // All OMDB keys failed
     }
-  }
-
-  // Layer 2: Direct IMDb scrape fallback
-  try {
-    const html = await fetchText(imdbUrl, {
-      headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en-US,en;q=0.9' },
-    });
-    const parsed = parseImdbHtml(html);
-    const themes = parseImdbThemes(html);
-    if (parsed.value != null) {
-      return {
-        score: normalizeScore({
-          source: 'imdb',
-          label: 'IMDb',
-          normalized: null,
-          raw: { value: parsed.value, scale: '0-10' },
-          count: parsed.count,
-          url: imdbUrl,
-        }),
-        fallback: {},
-        themes,
-      };
-    }
-  } catch {
-    // Scrape also failed
   }
 
   return {
     score: { source: 'imdb', label: 'IMDb', normalized: null, url: imdbUrl, error: 'No rating data available' },
     fallback: {},
-    themes: [],
+    themes,
+    summary,
   };
 }
 
@@ -703,6 +712,7 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
     missingSources,
     themes: imdbResult.themes.length > 0 ? imdbResult.themes : undefined,
     consensus: Object.keys(rtResult.consensus).length > 0 ? rtResult.consensus : undefined,
+    imdbSummary: imdbResult.summary || undefined,
   };
   scoreCache.set(cacheKey, payload);
   return payload;

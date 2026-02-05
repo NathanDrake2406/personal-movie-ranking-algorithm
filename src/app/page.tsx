@@ -238,54 +238,41 @@ const RTScoreCard = memo(function RTScoreCard({
   );
 });
 
-type ThemeChipProps = {
-  theme: { label: string; sentiment: 'positive' | 'negative' };
-};
-
-const ThemeChip = memo(function ThemeChip({ theme }: ThemeChipProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  const handleClick = useCallback(() => {
-    setShowTooltip((prev) => !prev);
-  }, []);
-
-  const handleBlur = useCallback(() => {
-    setShowTooltip(false);
-  }, []);
-
-  return (
-    <button
-      type="button"
-      className={`${styles.themeChip} ${theme.sentiment === 'negative' ? styles.themeChipNegative : ''}`}
-      onClick={handleClick}
-      onBlur={handleBlur}
-    >
-      {theme.label}
-      {showTooltip && (
-        <span className={styles.themeTooltip}>
-          {theme.label} — {theme.sentiment === 'positive' ? 'Positive ✓' : 'Negative'}
-        </span>
-      )}
-    </button>
-  );
-});
-
 type ThemesSectionProps = {
   themes: Array<{ label: string; sentiment: 'positive' | 'negative' }>;
+  summary?: string;
   imdbUrl?: string;
 };
 
-const ThemesSection = memo(function ThemesSection({ themes, imdbUrl }: ThemesSectionProps) {
-  if (themes.length === 0) return null;
+const ThemesSection = memo(function ThemesSection({ themes, summary, imdbUrl }: ThemesSectionProps) {
+  if (themes.length === 0 && !summary) return null;
 
   return (
     <div className={styles.themesSection}>
-      <p className={styles.themesLabel}>What resonated with audiences</p>
-      <div className={styles.themesGrid}>
-        {themes.map((theme) => (
-          <ThemeChip key={theme.label} theme={theme} />
-        ))}
-      </div>
+      {themes.length > 0 && (
+        <>
+          <p className={styles.themesLabel}>What resonated with audiences</p>
+          <div className={styles.themesGrid}>
+            {themes.map((theme) => (
+              <span
+                key={theme.label}
+                className={`${styles.themeChip} ${
+                  theme.sentiment === 'positive' ? styles.themeChipPositive :
+                  theme.sentiment === 'negative' ? styles.themeChipNegative :
+                  styles.themeChipNeutral
+                }`}
+              >
+                {theme.label}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+      {summary && (
+        <div className={styles.themeSummary}>
+          <p>{summary}</p>
+        </div>
+      )}
       {imdbUrl && (
         <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.themesFooter}>
           AI-generated from user reviews
@@ -295,12 +282,32 @@ const ThemesSection = memo(function ThemesSection({ themes, imdbUrl }: ThemesSec
   );
 });
 
-type ConsensusSectionProps = {
-  consensus: { critics?: string; audience?: string };
-  rtUrl?: string;
+type ImdbSummarySectionProps = {
+  summary: string;
+  imdbUrl?: string;
 };
 
-const ConsensusSection = memo(function ConsensusSection({ consensus, rtUrl }: ConsensusSectionProps) {
+const ImdbSummarySection = memo(function ImdbSummarySection({ summary, imdbUrl }: ImdbSummarySectionProps) {
+  return (
+    <div className={styles.consensusSection}>
+      <div className={styles.consensusBlock}>
+        <p className={styles.consensusLabel}>What Audiences Say</p>
+        <p className={styles.consensusText}>{summary}</p>
+      </div>
+      {imdbUrl && (
+        <a href={`${imdbUrl}reviews`} target="_blank" rel="noreferrer" className={styles.consensusFooter}>
+          AI-generated from IMDb user reviews →
+        </a>
+      )}
+    </div>
+  );
+});
+
+type ConsensusSectionProps = {
+  consensus: { critics?: string; audience?: string };
+};
+
+const ConsensusSection = memo(function ConsensusSection({ consensus }: ConsensusSectionProps) {
   if (!consensus.critics && !consensus.audience) return null;
 
   return (
@@ -316,11 +323,6 @@ const ConsensusSection = memo(function ConsensusSection({ consensus, rtUrl }: Co
           <p className={styles.consensusLabel}>Audience Says</p>
           <p className={styles.consensusText}>{consensus.audience}</p>
         </div>
-      )}
-      {rtUrl && (
-        <a href={rtUrl} target="_blank" rel="noreferrer" className={styles.consensusFooter}>
-          View on Rotten Tomatoes →
-        </a>
       )}
     </div>
   );
@@ -666,14 +668,12 @@ export default function Home() {
               {data.themes && data.themes.length > 0 && (
                 <ThemesSection
                   themes={data.themes}
+                  summary={data.imdbSummary}
                   imdbUrl={`https://www.imdb.com/title/${data.movie.imdbId}/`}
                 />
               )}
               {data.consensus && (
-                <ConsensusSection
-                  consensus={data.consensus}
-                  rtUrl={data.sources.find(s => s.source === 'rotten_tomatoes')?.url}
-                />
+                <ConsensusSection consensus={data.consensus} />
               )}
             </div>
           </div>
