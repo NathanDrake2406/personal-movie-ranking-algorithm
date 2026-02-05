@@ -32,6 +32,7 @@ export type MovieInfo = {
   tmdbId?: number; // Still used for movie resolution, just not for scoring
   overview?: string;
   runtime?: number;
+  rating?: string; // Content rating (G, PG, PG-13, R, etc.)
   genres?: string[];
   director?: string;
   directors?: string[]; // Multiple directors (e.g., Coen Brothers)

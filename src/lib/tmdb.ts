@@ -35,6 +35,12 @@ type TmdbDetailsResponse = {
     crew?: Array<{ job: string; name: string }>;
     cast?: Array<{ name: string; order: number }>;
   };
+  release_dates?: {
+    results?: Array<{
+      iso_3166_1: string;
+      release_dates: Array<{ certification: string; type: number }>;
+    }>;
+  };
 };
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -56,11 +62,18 @@ export async function findByImdb(imdbId: string, apiKey: string) {
 }
 
 export async function getTmdbDetails(tmdbId: number, apiKey: string) {
-  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits`);
+  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,release_dates`);
 }
 
 export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
   const crew = movie.credits?.crew ?? [];
+
+  // Get content rating (US preferred, fallback to GB)
+  const releaseDates = movie.release_dates?.results ?? [];
+  const usRelease = releaseDates.find((r) => r.iso_3166_1 === 'US');
+  const gbRelease = releaseDates.find((r) => r.iso_3166_1 === 'GB');
+  const releaseData = usRelease ?? gbRelease;
+  const rating = releaseData?.release_dates.find((rd) => rd.certification)?.certification;
 
   // Get all directors (some films have multiple, e.g., Coen Brothers)
   const directors = crew
@@ -98,6 +111,7 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
     tmdbId: movie.id,
     overview: movie.overview,
     runtime: movie.runtime,
+    rating,
     genres: movie.genres?.map((g) => g.name),
     director: directors[0], // Keep backward compatibility
     directors: directors.length > 0 ? directors : undefined,

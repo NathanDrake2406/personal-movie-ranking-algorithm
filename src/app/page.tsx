@@ -731,6 +731,7 @@ export default function Home() {
               <p className={styles.movieMeta}>
                 {[
                   data.movie.year,
+                  data.movie.rating,
                   data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
                   data.movie.genres?.slice(0, 3).join(', '),
                 ].filter(Boolean).join(' · ')}
