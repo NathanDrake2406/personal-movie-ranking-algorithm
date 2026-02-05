@@ -17,6 +17,11 @@ export async function fetchWithTimeout(
         ...(init.headers || {}),
       },
     });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Some sources took too long to respond. Please try again.');
+    }
+    throw err;
   } finally {
     clearTimeout(timeout);
   }
