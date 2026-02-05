@@ -505,7 +505,15 @@
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease, transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.posterWrapper:hover .poster {
+  transform: scale(1.02);
+  box-shadow:
+    0 30px 60px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 80px rgba(240, 192, 64, 0.08);
 }
 
 .posterPlaceholder {
@@ -604,8 +612,17 @@
   color: #444;
   margin: 0 0 32px 0;
   padding: 20px 0;
-  border-top: 1px solid #333;
-  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.scoresTitle::before,
+.scoresTitle::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #333 20%, #333 80%, transparent);
 }
 
 .scoresGrid {
@@ -623,6 +640,13 @@
   display: flex;
   flex-direction: column;
   animation: scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.scoreCard:hover {
+  transform: translateY(-4px);
+  background: #1a1a1a;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
 }
 
 .scoreCard:nth-child(1) { animation-delay: 0.3s; }
@@ -678,14 +702,14 @@
   margin-top: auto;
   padding-top: 16px;
   font-size: 12px;
-  color: #999;
+  color: #555;
   text-decoration: none;
   letter-spacing: 0.05em;
+  transition: color 0.2s ease;
 }
 
 .scoreLink:hover {
-  color: #e8e8e8;
-  text-decoration: underline;
+  color: #bbb;
 }
 
 .scoreLink:focus-visible {
@@ -807,9 +831,9 @@
 }
 
 .themeChipNeutral {
-  background: #1a1a1a;
-  border-color: #333;
-  color: #888;
+  background: #1f1f1f;
+  border-color: #3a3a3a;
+  color: #999;
 }
 
 .themeSummary {
@@ -943,8 +967,14 @@
     animation: none;
   }
 
-  .dropdownItem {
+  .dropdownItem,
+  .scoreCard {
     transition: none;
+  }
+
+  .scoreCard:hover,
+  .posterWrapper:hover .poster {
+    transform: none;
   }
 
   .posterSkeleton {
