@@ -640,7 +640,7 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   if (cached) return cached;
 
   // Fetch ALL sources in parallel (no waiting for IMDb first)
-  const [imdbResult, rtScores, metacriticScore, letterboxdScore, allocineScores, doubanScore] = await Promise.all([
+  const [imdbResult, rtResult, metacriticScore, letterboxdScore, allocineScores, doubanScore] = await Promise.all([
     fetchImdb(ctx),
     fetchRottenTomatoes(ctx), // No fallback passed - apply post-hoc if needed
     fetchMetacritic(ctx),     // No fallback passed - apply post-hoc if needed
@@ -650,11 +650,11 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   ]);
 
   // Apply OMDB fallbacks post-hoc if direct fetches failed
-  let finalRtScores = rtScores;
+  let finalRtScores = rtResult.scores;
   let finalMetacriticScore = metacriticScore;
 
   // RT: If all scores have errors OR all normalized values are null, use OMDB fallback
-  const rtAllFailed = rtScores.every((s) => s.error != null || s.normalized == null);
+  const rtAllFailed = rtResult.scores.every((s) => s.error != null || s.normalized == null);
   if (rtAllFailed && imdbResult.fallback.rt != null) {
     finalRtScores = [
       normalizeScore({
@@ -696,7 +696,14 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
 
   const missingSources = normalized.filter((s) => s.normalized == null).map((s) => s.label);
 
-  const payload: ScorePayload = { movie: ctx.movie, sources: normalized, overall, missingSources };
+  const payload: ScorePayload = {
+    movie: ctx.movie,
+    sources: normalized,
+    overall,
+    missingSources,
+    themes: imdbResult.themes.length > 0 ? imdbResult.themes : undefined,
+    consensus: Object.keys(rtResult.consensus).length > 0 ? rtResult.consensus : undefined,
+  };
   scoreCache.set(cacheKey, payload);
   return payload;
 }
