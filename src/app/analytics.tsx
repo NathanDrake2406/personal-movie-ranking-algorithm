@@ -8,6 +8,15 @@ const VercelAnalytics = dynamic(
   { ssr: false }
 );
 
+const VercelSpeedInsights = dynamic(
+  () => import('@vercel/speed-insights/react').then((m) => m.SpeedInsights),
+  { ssr: false }
+);
+
 export function Analytics() {
   return <VercelAnalytics />;
+}
+
+export function SpeedInsights() {
+  return <VercelSpeedInsights />;
 }
