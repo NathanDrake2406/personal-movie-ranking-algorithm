@@ -3,11 +3,13 @@ import { fetchWikidataIds } from '@/lib/wikidata';
 import { runFetchers } from '@/lib/fetchers';
 import { resolveByTmdbId } from '@/lib/resolve';
 import { getApiKeys } from '@/lib/config';
+import { log } from '@/lib/logger';
 
 export async function POST(request: Request) {
+  let tmdbId: number | undefined;
   try {
     const body = await request.json();
-    const tmdbId = body?.tmdbId as number | undefined;
+    tmdbId = body?.tmdbId as number | undefined;
     if (!tmdbId || typeof tmdbId !== 'number') {
       return NextResponse.json({ error: 'tmdbId is required' }, { status: 400 });
     }
@@ -25,17 +27,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const { movie } = await resolveByTmdbId(tmdbId, env);
+    const { movie } = await resolveByTmdbId(tmdbId, env, request.signal);
     if (!movie.imdbId) {
       return NextResponse.json({ error: 'Could not determine IMDb ID' }, { status: 422 });
     }
 
-    const wikidata = await fetchWikidataIds(movie.imdbId);
-    const payload = await runFetchers({ movie, wikidata, env });
+    const wikidata = await fetchWikidataIds(movie.imdbId, request.signal);
+    const payload = await runFetchers({ movie, wikidata, env, signal: request.signal });
 
     return NextResponse.json(payload, { status: 200 });
   } catch (err) {
-    console.error(err);
+    log.error('score_request_failed', { tmdbId, error: (err as Error).message });
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

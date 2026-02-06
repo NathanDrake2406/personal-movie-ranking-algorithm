@@ -11,24 +11,26 @@ type OmdbMovie = {
   Ratings?: Array<{ Source: string; Value: string }>;
 };
 
-export async function fetchOmdbByTitle(title: string, apiKey: string) {
+export async function fetchOmdbByTitle(title: string, apiKey: string, signal?: AbortSignal) {
   const data = await fetchJson<{ Search?: OmdbMovie[] }>(
     `https://www.omdbapi.com/?apikey=${apiKey}&type=movie&s=${encodeURIComponent(title)}`,
+    { signal },
   );
   return data.Search ?? [];
 }
 
-export async function fetchOmdbById(imdbId: string, apiKey: string) {
+export async function fetchOmdbById(imdbId: string, apiKey: string, signal?: AbortSignal) {
   return fetchJson<OmdbMovie>(
     `https://www.omdbapi.com/?apikey=${apiKey}&i=${encodeURIComponent(imdbId)}`,
+    { signal },
   );
 }
 
 // Try multiple API keys until one succeeds
-export async function fetchOmdbByIdWithRotation(imdbId: string, apiKeys: string[]) {
+export async function fetchOmdbByIdWithRotation(imdbId: string, apiKeys: string[], signal?: AbortSignal) {
   for (const key of apiKeys) {
     try {
-      const data = await fetchOmdbById(imdbId, key);
+      const data = await fetchOmdbById(imdbId, key, signal);
       // OMDB returns Response: "False" on error, check for valid data
       if (data.imdbRating || data.Title) {
         return data;
@@ -40,10 +42,10 @@ export async function fetchOmdbByIdWithRotation(imdbId: string, apiKeys: string[
   throw new Error('All OMDB keys exhausted');
 }
 
-export async function fetchOmdbByTitleWithRotation(title: string, apiKeys: string[]) {
+export async function fetchOmdbByTitleWithRotation(title: string, apiKeys: string[], signal?: AbortSignal) {
   for (const key of apiKeys) {
     try {
-      const results = await fetchOmdbByTitle(title, key);
+      const results = await fetchOmdbByTitle(title, key, signal);
       if (results.length > 0) {
         return results;
       }

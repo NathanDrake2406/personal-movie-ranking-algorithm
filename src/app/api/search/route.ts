@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getApiKeys } from '@/lib/config';
 import { parseQuery, rankResults, generateVariants, type SearchResult } from '@/lib/search-utils';
 import { fetchJson } from '@/lib/http';
+import { log } from '@/lib/logger';
 
 type TMDBSearchResult = {
   results: Array<{
@@ -14,14 +15,14 @@ type TMDBSearchResult = {
   }>;
 };
 
-async function fetchTMDB(tmdbKey: string, searchTitle: string, year: number | null): Promise<TMDBSearchResult> {
+async function fetchTMDB(tmdbKey: string, searchTitle: string, year: number | null, signal?: AbortSignal): Promise<TMDBSearchResult> {
   let url = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(searchTitle)}&page=1`;
 
   if (year) {
     url += `&primary_release_year=${year}`;
   }
 
-  return fetchJson<TMDBSearchResult>(url, {}, 5000);
+  return fetchJson<TMDBSearchResult>(url, { signal }, 5000);
 }
 
 export async function GET(request: Request) {
@@ -50,14 +51,14 @@ export async function GET(request: Request) {
 
     // Fetch all variants in parallel (with year filter if present)
     const allResults = await Promise.all(
-      allQueries.map((q) => fetchTMDB(tmdbKey, q, year))
+      allQueries.map((q) => fetchTMDB(tmdbKey, q, year, request.signal))
     );
     let combinedResults = allResults.flatMap((r) => r.results);
 
     // Fallback: if year filter returns empty, retry all without year
     if (year && combinedResults.length === 0) {
       const noYearResults = await Promise.all(
-        allQueries.map((q) => fetchTMDB(tmdbKey, q, null))
+        allQueries.map((q) => fetchTMDB(tmdbKey, q, null, request.signal))
       );
       combinedResults = noYearResults.flatMap((r) => r.results);
     }
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ results });
   } catch (err) {
-    console.error('[Search error]', err);
+    log.error('search_failed', { query, error: (err as Error).message });
     return NextResponse.json({ error: 'Search failed' }, { status: 500 });
   }
 }

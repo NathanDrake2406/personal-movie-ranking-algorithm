@@ -7,10 +7,13 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, controller.signal])
+    : controller.signal;
   try {
     return await fetch(url, {
       ...init,
-      signal: controller.signal,
+      signal,
       headers: {
         'user-agent':
           'movies-ranking/1.0 (+https://movies-ranking-rho.vercel.app)',

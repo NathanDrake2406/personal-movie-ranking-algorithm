@@ -1,4 +1,5 @@
 import { fetchJson, fetchText } from './http';
+import { log } from './logger';
 import { normalizeScore } from './normalize';
 import { computeOverallScore } from './scoring';
 import type { MovieInfo, ScorePayload, SourceScore, WikidataIds } from './types';
@@ -26,6 +27,7 @@ type FetcherContext = {
   movie: MovieInfo;
   wikidata: WikidataIds;
   env: Record<string, string | undefined>;
+  signal?: AbortSignal;
 };
 
 type OmdbFallback = { rt?: number | null; metacritic?: number | null };
@@ -51,6 +53,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
   try {
     const html = await fetchText(imdbUrl, {
       headers: { 'user-agent': BROWSER_UA, 'accept-language': 'en-US,en;q=0.9' },
+      signal: ctx.signal,
     });
     themes = parseImdbThemes(html);
     summary = parseImdbSummary(html);
@@ -80,7 +83,7 @@ async function fetchImdb(ctx: FetcherContext): Promise<{ score: SourceScore; fal
   // Layer 2: OMDB API fallback for rating (themes/summary already extracted above)
   if (omdbKeys.length > 0) {
     try {
-      const data = await fetchOmdbByIdWithRotation(ctx.movie.imdbId, omdbKeys);
+      const data = await fetchOmdbByIdWithRotation(ctx.movie.imdbId, omdbKeys, ctx.signal);
       const ratings = parseOmdbRatings(data);
       if (ratings.imdb != null && !isNaN(ratings.imdb)) {
         const score = normalizeScore({
@@ -133,7 +136,7 @@ async function fetchAllocine(ctx: FetcherContext): Promise<SourceScore[]> {
     : `https://www.allocine.fr/series/ficheserie_gen_cserie=${id}.html`;
 
   try {
-    const html = await fetchText(url, { headers: { 'user-agent': BROWSER_UA } });
+    const html = await fetchText(url, { headers: { 'user-agent': BROWSER_UA }, signal: ctx.signal });
     const { press, user } = parseAllocineHtml(html);
 
     return [
@@ -172,6 +175,7 @@ async function fetchRottenTomatoes(
     const apiUrl = `https://www.rottentomatoes.com/napi/movie/${slug}`;
     const json = await fetchJson<{ meterScore?: number }>(apiUrl, {
       headers: { 'user-agent': BROWSER_UA, accept: 'application/json' },
+      signal: ctx.signal,
     });
     const apiParsed = parseRTApiResponse(json);
     let value = apiParsed.tomatometer;
@@ -186,6 +190,7 @@ async function fetchRottenTomatoes(
     if (value == null) {
       const html = await fetchText(`https://www.rottentomatoes.com/m/${slug}`, {
         headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
+        signal: ctx.signal,
       });
       const criticsParsed = parseRTCriticsHtml(html);
       avgAll = criticsParsed.criticsAvgAll;
@@ -241,6 +246,7 @@ async function fetchRottenTomatoes(
     try {
       const html = await fetchText(`https://www.rottentomatoes.com/m/${slug}`, {
         headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
+        signal: ctx.signal,
       });
       const criticsParsed = parseRTCriticsHtml(html);
       const audienceParsed = parseRTAudienceHtml(html);
@@ -303,7 +309,7 @@ async function fetchRottenTomatoes(
         return { scores, consensus };
       }
     } catch (scrapeErr) {
-      console.error('[RT HTML scrape failed]', (scrapeErr as Error).message);
+      log.warn('rt_scrape_failed', { imdbId: ctx.movie.imdbId, error: (scrapeErr as Error).message });
       // fall through to OMDB fallback
     }
 
@@ -337,10 +343,11 @@ async function fetchRottenTomatoes(
 }
 
 // Try to scrape Metacritic page and extract score/count
-async function scrapeMetacritic(slug: string): Promise<{ value: number | null; count: number | null } | null> {
+async function scrapeMetacritic(slug: string, signal?: AbortSignal): Promise<{ value: number | null; count: number | null } | null> {
   try {
     const html = await fetchText(`https://www.metacritic.com/movie/${slug}/`, {
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
+      signal,
     });
     const parsed = parseMetacriticHtml(html);
     if (parsed.value != null) {
@@ -375,13 +382,13 @@ async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | nul
   }
 
   // Try original slug first
-  let result = await scrapeMetacritic(slug);
+  let result = await scrapeMetacritic(slug, ctx.signal);
   let usedSlug = slug;
 
   // If failed and we have a year, try slug with year appended (e.g., "seven-samurai-1954")
   if (!result && ctx.movie.year) {
     const slugWithYear = `${slug}-${ctx.movie.year}`;
-    result = await scrapeMetacritic(slugWithYear);
+    result = await scrapeMetacritic(slugWithYear, ctx.signal);
     if (result) usedSlug = slugWithYear;
   }
 
@@ -422,6 +429,7 @@ async function fetchLetterboxd(ctx: FetcherContext): Promise<SourceScore> {
   try {
     const html = await fetchText(`https://letterboxd.com/film/${slug}/`, {
       headers: { accept: 'text/html', 'user-agent': BROWSER_UA },
+      signal: ctx.signal,
     });
     const parsed = parseLetterboxdHtml(html);
     return normalizeScore({
@@ -457,13 +465,13 @@ function getDoubanIdFromWikidata(wikidataId?: string): DoubanIdResult {
 }
 
 // Method 2: Douban Suggest API (JSON endpoint) - try IMDb ID first, then title
-async function getDoubanIdFromSuggestApi(imdbId: string, title?: string): Promise<DoubanIdResult> {
+async function getDoubanIdFromSuggestApi(imdbId: string, title?: string, signal?: AbortSignal): Promise<DoubanIdResult> {
   try {
     // First try with IMDb ID
     const rawImdbId = imdbId.replace(/^tt/, '');
     let data = await fetchJson<Array<{ id?: string; episode?: string; sub_title?: string }>>(
       `https://movie.douban.com/j/subject_suggest?q=tt${rawImdbId}`,
-      { headers: { 'user-agent': BROWSER_UA } },
+      { headers: { 'user-agent': BROWSER_UA }, signal },
       4000,
     );
 
@@ -477,7 +485,7 @@ async function getDoubanIdFromSuggestApi(imdbId: string, title?: string): Promis
     if (title && data.length === 0) {
       data = await fetchJson<Array<{ id?: string; episode?: string; sub_title?: string }>>(
         `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(title)}`,
-        { headers: { 'user-agent': BROWSER_UA } },
+        { headers: { 'user-agent': BROWSER_UA }, signal },
         4000,
       );
       // Match by sub_title (English title) to avoid wrong matches
@@ -494,12 +502,12 @@ async function getDoubanIdFromSuggestApi(imdbId: string, title?: string): Promis
 }
 
 // Method 3: Douban Subject Search (HTML scraping)
-async function getDoubanIdFromSubjectSearch(imdbId: string): Promise<DoubanIdResult> {
+async function getDoubanIdFromSubjectSearch(imdbId: string, signal?: AbortSignal): Promise<DoubanIdResult> {
   try {
     const rawImdbId = imdbId.replace(/^tt/, '');
     const html = await fetchText(
       `https://movie.douban.com/subject_search?search_text=tt${rawImdbId}`,
-      { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' } },
+      { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, signal },
       4000,
     );
     const id = parseDoubanSubjectSearchHtml(html);
@@ -510,12 +518,12 @@ async function getDoubanIdFromSubjectSearch(imdbId: string): Promise<DoubanIdRes
 }
 
 // Method 4: Douban Global Search (looks for IMDb ID in onclick attributes)
-async function getDoubanIdFromGlobalSearch(imdbId: string): Promise<DoubanIdResult> {
+async function getDoubanIdFromGlobalSearch(imdbId: string, signal?: AbortSignal): Promise<DoubanIdResult> {
   try {
     const rawImdbId = imdbId.replace(/^tt/, '');
     const html = await fetchText(
       `https://www.douban.com/search?cat=1002&q=tt${rawImdbId}`,
-      { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' } },
+      { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, signal },
       8000,
     );
     const id = parseDoubanGlobalSearchHtml(html);
@@ -526,11 +534,11 @@ async function getDoubanIdFromGlobalSearch(imdbId: string): Promise<DoubanIdResu
 }
 
 // Method 5: Google Search (last resort when Douban blocks)
-async function getDoubanIdFromGoogle(imdbId: string): Promise<DoubanIdResult> {
+async function getDoubanIdFromGoogle(imdbId: string, signal?: AbortSignal): Promise<DoubanIdResult> {
   try {
     const html = await fetchText(
       `https://www.google.com/search?q=%22${imdbId}%22+site:movie.douban.com/subject&safe=off`,
-      { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' } },
+      { headers: { 'user-agent': BROWSER_UA, accept: 'text/html' }, signal },
       10000,
     );
     const id = parseGoogleDoubanSearchHtml(html);
@@ -541,25 +549,25 @@ async function getDoubanIdFromGoogle(imdbId: string): Promise<DoubanIdResult> {
 }
 
 // Waterfall: try each method in order until one succeeds
-async function resolveDoubanId(imdbId: string, wikidataDoubanId?: string, title?: string): Promise<DoubanIdResult> {
+async function resolveDoubanId(imdbId: string, wikidataDoubanId?: string, title?: string, signal?: AbortSignal): Promise<DoubanIdResult> {
   // 1. Wikidata (already fetched, safest)
   const wikiResult = getDoubanIdFromWikidata(wikidataDoubanId);
   if (wikiResult.id) return wikiResult;
 
   // 2. Douban Suggest API (tries IMDb ID, then title)
-  const suggestResult = await getDoubanIdFromSuggestApi(imdbId, title);
+  const suggestResult = await getDoubanIdFromSuggestApi(imdbId, title, signal);
   if (suggestResult.id) return suggestResult;
 
   // 3. Douban Subject Search
-  const subjectResult = await getDoubanIdFromSubjectSearch(imdbId);
+  const subjectResult = await getDoubanIdFromSubjectSearch(imdbId, signal);
   if (subjectResult.id) return subjectResult;
 
   // 4. Douban Global Search
-  const globalResult = await getDoubanIdFromGlobalSearch(imdbId);
+  const globalResult = await getDoubanIdFromGlobalSearch(imdbId, signal);
   if (globalResult.id) return globalResult;
 
   // 5. Google Search (last resort)
-  const googleResult = await getDoubanIdFromGoogle(imdbId);
+  const googleResult = await getDoubanIdFromGoogle(imdbId, signal);
   if (googleResult.id) return googleResult;
 
   return { id: null, method: 'none' };
@@ -577,10 +585,10 @@ type DoubanAbstractResponse = {
 // Fetch rating from Douban's subject_abstract JSON API
 // Note: Vote count is not available via API, and HTML pages are protected (302 redirect).
 // Douban will use default 0.7 reliability.
-async function fetchDoubanRating(doubanId: string): Promise<{ rating: number | null; count: number | null }> {
+async function fetchDoubanRating(doubanId: string, signal?: AbortSignal): Promise<{ rating: number | null; count: number | null }> {
   const data = await fetchJson<DoubanAbstractResponse>(
     `https://movie.douban.com/j/subject_abstract?subject_id=${doubanId}`,
-    { headers: { 'user-agent': BROWSER_UA } },
+    { headers: { 'user-agent': BROWSER_UA }, signal },
     10000,
   );
 
@@ -603,7 +611,7 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
 
   try {
     // Resolve Douban ID using waterfall (Wikidata → Suggest API → Subject Search → Global Search → Google)
-    const { id: doubanId, method } = await resolveDoubanId(ctx.movie.imdbId, ctx.wikidata.douban, ctx.movie.title);
+    const { id: doubanId, method } = await resolveDoubanId(ctx.movie.imdbId, ctx.wikidata.douban, ctx.movie.title, ctx.signal);
 
     if (!doubanId) {
       return {
@@ -615,7 +623,7 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
     }
 
     // Fetch rating from JSON API (HTML pages have JS challenge)
-    const { rating, count } = await fetchDoubanRating(doubanId);
+    const { rating, count } = await fetchDoubanRating(doubanId, ctx.signal);
     const url = `https://movie.douban.com/subject/${doubanId}/`;
 
     if (rating == null) {
@@ -659,6 +667,8 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   const cacheKey = ctx.movie.imdbId;
   const cached = scoreCache.get(cacheKey);
   if (cached) return cached;
+
+  const startMs = Date.now();
 
   // Fetch ALL sources in parallel (no waiting for IMDb first)
   const [imdbResult, rtResult, metacriticScore, letterboxdScore, allocineScores, doubanScore] = await Promise.all([
@@ -711,9 +721,22 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   const flattened = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
   const normalized = flattened.map(normalizeScore);
 
-  // Use Bayesian scoring with year-adjusted reliability
-  const movieYear = ctx.movie.year ? parseInt(ctx.movie.year, 10) : undefined;
-  const overall = computeOverallScore(normalized, movieYear);
+  const overall = computeOverallScore(normalized);
+
+  for (const s of normalized) {
+    log.info('source_fetched', {
+      imdbId: ctx.movie.imdbId,
+      source: s.source,
+      hasScore: s.normalized != null,
+      error: s.error,
+    });
+  }
+  log.info('scores_computed', {
+    imdbId: ctx.movie.imdbId,
+    durationMs: Date.now() - startMs,
+    sourcesAvailable: normalized.filter((s) => s.normalized != null).length,
+    overallScore: overall?.score ?? null,
+  });
 
   const missingSources = normalized.filter((s) => s.normalized == null).map((s) => s.label);
 

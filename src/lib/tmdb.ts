@@ -46,23 +46,25 @@ type TmdbDetailsResponse = {
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p/w500';
 
-export async function searchTmdbTitle(query: string, apiKey: string) {
+export async function searchTmdbTitle(query: string, apiKey: string, signal?: AbortSignal) {
   const data = await fetchJson<{ results: TmdbSearchResult[] }>(
     `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}`,
+    { signal },
   );
   return data.results ?? [];
 }
 
-export async function findByImdb(imdbId: string, apiKey: string) {
+export async function findByImdb(imdbId: string, apiKey: string, signal?: AbortSignal) {
   const data = await fetchJson<TmdbFindResponse>(
     `${TMDB_BASE}/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`,
+    { signal },
   );
   const match = data.movie_results?.[0];
   return match ?? null;
 }
 
-export async function getTmdbDetails(tmdbId: number, apiKey: string) {
-  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,release_dates`);
+export async function getTmdbDetails(tmdbId: number, apiKey: string, signal?: AbortSignal) {
+  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,release_dates`, { signal });
 }
 
 export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {

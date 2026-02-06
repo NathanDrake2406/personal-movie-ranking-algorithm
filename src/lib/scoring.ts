@@ -29,7 +29,6 @@ const MIN_SOURCES_FOR_VERDICT = 6;
 
 export function computeOverallScore(
   scores: SourceScore[],
-  _movieYear?: number
 ): OverallScore | null {
   // Filter to sources with valid normalized scores that are in our weight set
   const valid = scores.filter(

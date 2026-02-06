@@ -17,7 +17,7 @@ type SparqlResponse = {
 const ENDPOINT = 'https://query.wikidata.org/sparql';
 
 // Looks up Wikidata entity by IMDb ID (P345) and returns platform IDs
-export async function fetchWikidataIds(imdbId: string): Promise<WikidataIds> {
+export async function fetchWikidataIds(imdbId: string, signal?: AbortSignal): Promise<WikidataIds> {
   const query = `SELECT ?rt ?mc ?lb ?db ?allocineFilm ?allocineSeries WHERE {
     ?item wdt:P345 "${imdbId}" .
     OPTIONAL { ?item wdt:P1258 ?rt }
@@ -34,6 +34,7 @@ export async function fetchWikidataIds(imdbId: string): Promise<WikidataIds> {
       'user-agent': 'movies-ranking/1.0 (+https://movies-ranking-rho.vercel.app)',
       accept: 'application/sparql-results+json',
     },
+    signal,
   });
 
   const hit = data.results.bindings[0];

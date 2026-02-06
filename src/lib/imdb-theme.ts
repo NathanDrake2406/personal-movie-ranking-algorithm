@@ -19,10 +19,11 @@ const themeSummaryCache = new MemoryCache<string>(24 * 60 * 60 * 1000, 1000);
 
 type ImdbThemeEnv = Record<string, string | undefined>;
 
-type ImdbThemeSummaryResult = {
-  summary: string | null;
-  error?: string;
-};
+export type ImdbThemeSummaryResult =
+  | { status: 'found'; summary: string }
+  | { status: 'not_found' }
+  | { status: 'config_error'; error: string }
+  | { status: 'upstream_error'; error: string };
 
 function parseJsonEnv(value?: string): Record<string, string> {
   if (!value) return {};
@@ -83,16 +84,17 @@ export async function fetchImdbThemeSummary(
   imdbId: string,
   themeId: string,
   env: ImdbThemeEnv,
+  signal?: AbortSignal,
 ): Promise<ImdbThemeSummaryResult> {
   const cacheKey = `${imdbId}:${themeId}`;
   const cached = themeSummaryCache.get(cacheKey);
-  if (cached) return { summary: cached };
+  if (cached) return { status: 'found', summary: cached };
 
   const graphqlUrl = env.IMDB_THEME_GQL_URL || DEFAULT_GRAPHQL_URL;
   const payload = buildGraphqlPayload(imdbId, themeId, env);
   if (!payload) {
     return {
-      summary: null,
+      status: 'config_error',
       error: 'Missing IMDb GraphQL configuration. Set IMDB_THEME_GQL_QUERY or IMDB_THEME_GQL_PERSISTED_HASH.',
     };
   }
@@ -123,22 +125,23 @@ export async function fetchImdbThemeSummary(
         url.searchParams.set('operationName', operationName);
         url.searchParams.set('variables', JSON.stringify(payload.variables ?? {}));
         url.searchParams.set('extensions', JSON.stringify(payload.extensions ?? {}));
-        return fetchJson<unknown>(url.toString(), { method: 'GET', headers });
+        return fetchJson<unknown>(url.toString(), { method: 'GET', headers, signal });
       }
 
       return fetchJson<unknown>(graphqlUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+        signal,
       });
     })();
 
     const summary = parseImdbThemeSummaryResponse(response, themeId);
-    if (!summary) return { summary: null, error: 'No summary found in response.' };
+    if (!summary) return { status: 'not_found' };
 
     themeSummaryCache.set(cacheKey, summary);
-    return { summary };
+    return { status: 'found', summary };
   } catch (err) {
-    return { summary: null, error: (err as Error).message };
+    return { status: 'upstream_error', error: (err as Error).message };
   }
 }

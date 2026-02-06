@@ -302,7 +302,7 @@ describe('parsers', () => {
         },
       };
       const result = parseImdbThemeSummaryResponse(data, 'theme-123');
-      expect(result).toBe('Reviewers say the cinematography dazzles.');
+      expect(result).toBe('The cinematography dazzles.');
     });
 
     it('extracts summary from nested value object', () => {
@@ -325,7 +325,7 @@ describe('parsers', () => {
         },
       };
       const result = parseImdbThemeSummaryResponse(data, 'musical-score');
-      expect(result).toBe('Reviewers say the score is exceptional.');
+      expect(result).toBe('The score is exceptional.');
     });
   });
 
