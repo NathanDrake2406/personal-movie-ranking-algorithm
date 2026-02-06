@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { computeKvTtl } from './kv';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { computeKvTtl, kvGet, kvSet, _resetKvClient } from './kv';
+import type { ScorePayload } from './types';
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60;
 const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
+// ─── TTL (pure) ──────────────────────────────────────────────────────────────
 
 describe('computeKvTtl', () => {
   const now = new Date('2026-02-06T00:00:00Z');
@@ -27,5 +30,99 @@ describe('computeKvTtl', () => {
   it('returns 30 days for films older than 10 years', () => {
     expect(computeKvTtl('2015', now)).toBe(THIRTY_DAYS); // age 11
     expect(computeKvTtl('1994', now)).toBe(THIRTY_DAYS); // age 32
+  });
+});
+
+// ─── kvGet / kvSet (mocked Redis) ────────────────────────────────────────────
+
+const mockGet = vi.fn();
+const mockSet = vi.fn();
+
+vi.mock('@upstash/redis', () => ({
+  Redis: vi.fn().mockImplementation(() => ({ get: mockGet, set: mockSet })),
+}));
+
+const samplePayload: ScorePayload = {
+  movie: { imdbId: 'tt0111161', title: 'The Shawshank Redemption', year: '1994' },
+  sources: [],
+  overall: { score: 91, coverage: 0.95, disagreement: 3.2 },
+};
+
+describe('kvGet', () => {
+  beforeEach(() => {
+    _resetKvClient();
+    mockGet.mockReset();
+    process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.io';
+    process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
+  });
+  afterEach(() => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    _resetKvClient();
+  });
+
+  it('returns cached payload on KV hit', async () => {
+    mockGet.mockResolvedValue(samplePayload);
+    const result = await kvGet('tt0111161');
+    expect(result).toEqual(samplePayload);
+    expect(mockGet).toHaveBeenCalledWith('score:tt0111161');
+  });
+
+  it('returns null on KV miss', async () => {
+    mockGet.mockResolvedValue(null);
+    expect(await kvGet('tt9999999')).toBeNull();
+  });
+
+  it('returns null when env vars are missing', async () => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    _resetKvClient();
+    expect(await kvGet('tt0111161')).toBeNull();
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it('returns null on Redis error (graceful degradation)', async () => {
+    mockGet.mockRejectedValue(new Error('connection refused'));
+    expect(await kvGet('tt0111161')).toBeNull();
+  });
+});
+
+describe('kvSet', () => {
+  beforeEach(() => {
+    _resetKvClient();
+    mockSet.mockReset();
+    process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.io';
+    process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
+  });
+  afterEach(() => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    _resetKvClient();
+  });
+
+  it('writes with 30-day TTL for old films', async () => {
+    mockSet.mockResolvedValue(undefined);
+    await kvSet('tt0111161', samplePayload, '1994');
+    expect(mockSet).toHaveBeenCalledWith('score:tt0111161', samplePayload, { ex: 30 * 86400 });
+  });
+
+  it('writes with 7-day TTL for mid-age films', async () => {
+    mockSet.mockResolvedValue(undefined);
+    await kvSet('tt1234567', samplePayload, '2020');
+    expect(mockSet).toHaveBeenCalledWith('score:tt1234567', samplePayload, { ex: 7 * 86400 });
+  });
+
+  it('skips write for recent films', async () => {
+    await kvSet('tt0000001', samplePayload, '2025');
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('skips write when year is undefined', async () => {
+    await kvSet('tt0000001', samplePayload, undefined);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it('does not throw on Redis error', async () => {
+    mockSet.mockRejectedValue(new Error('rate limited'));
+    await expect(kvSet('tt0111161', samplePayload, '1994')).resolves.toBeUndefined();
   });
 });
