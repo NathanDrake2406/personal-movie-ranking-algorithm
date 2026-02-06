@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, memo, useReducer, useCallback } from 'react';
+import { useState, useRef, memo, useReducer } from 'react';
 import styles from './page.module.css';
 import { Poster } from './Poster';
 import { SearchCombobox } from './SearchCombobox';
+import { ThemesSection } from './ThemesSection';
 import type { ScorePayload, SourceScore, MovieInfo } from '@/lib/types';
 
 // Discriminated union for fetch state - makes impossible states impossible
@@ -185,100 +186,6 @@ const RTScoreCard = memo(function RTScoreCard({
           View source →
         </a>
       ) : null}
-    </div>
-  );
-});
-
-type ThemesSectionProps = {
-  themes: Array<{ id: string; label: string; sentiment: 'positive' | 'negative' | 'neutral' }>;
-  imdbId: string;
-};
-
-const ThemesSection = memo(function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
-  const [activeThemeId, setActiveThemeId] = useState<string | null>(null);
-  const [summaries, setSummaries] = useState<Record<string, string>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loadingThemeId, setLoadingThemeId] = useState<string | null>(null);
-
-  const handleChipClick = useCallback(
-    async (theme: ThemesSectionProps['themes'][number]) => {
-      if (activeThemeId === theme.id) {
-        setActiveThemeId(null);
-        return;
-      }
-
-      setActiveThemeId(theme.id);
-
-      if (summaries[theme.id] || loadingThemeId === theme.id) return;
-
-      setLoadingThemeId(theme.id);
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[theme.id];
-        return next;
-      });
-
-      try {
-        const res = await fetch(
-          `/api/imdb-theme?imdbId=${encodeURIComponent(imdbId)}&themeId=${encodeURIComponent(theme.id)}`,
-        );
-        if (!res.ok) {
-          throw new Error(`Request failed: ${res.status}`);
-        }
-        const json = (await res.json()) as { summary?: string };
-        if (!json.summary) throw new Error('Summary unavailable');
-        setSummaries((prev) => ({ ...prev, [theme.id]: json.summary as string }));
-      } catch (err) {
-        setErrors((prev) => ({ ...prev, [theme.id]: (err as Error).message }));
-      } finally {
-        setLoadingThemeId((prev) => (prev === theme.id ? null : prev));
-      }
-    },
-    [activeThemeId, imdbId, loadingThemeId, summaries],
-  );
-
-  if (themes.length === 0) return null;
-
-  const activeSummary = activeThemeId ? summaries[activeThemeId] : null;
-  const activeError = activeThemeId ? errors[activeThemeId] : null;
-  const isLoading = activeThemeId && loadingThemeId === activeThemeId;
-
-  return (
-    <div className={styles.themesSection}>
-      <p className={styles.themesLabel}>What resonated with audiences</p>
-      <div className={styles.themesGrid}>
-        {themes.map((theme) => (
-          <button
-            key={theme.id}
-            type="button"
-            className={`${styles.themeChip} ${
-              theme.sentiment === 'positive'
-                ? styles.themeChipPositive
-                : theme.sentiment === 'negative'
-                ? styles.themeChipNegative
-                : styles.themeChipNeutral
-            } ${activeThemeId === theme.id ? styles.themeChipActive : ''}`}
-            onClick={() => handleChipClick(theme)}
-          >
-            {theme.label}
-          </button>
-        ))}
-      </div>
-      {activeThemeId && (
-        <div className={styles.themeSummary}>
-          {isLoading && (
-            <div className={styles.themeSummaryLoading}>
-              <div className={styles.themeSummarySkeleton} />
-              <div className={styles.themeSummarySkeleton} />
-              <div className={styles.themeSummarySkeleton} />
-            </div>
-          )}
-          {!isLoading && activeError && (
-            <p className={styles.themeSummaryError}>Summary unavailable. Try the IMDb link below.</p>
-          )}
-          {!isLoading && !activeError && activeSummary && <p>{activeSummary}</p>}
-        </div>
-      )}
     </div>
   );
 });
