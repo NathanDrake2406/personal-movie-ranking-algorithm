@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
-import { getApiKeys } from '@/lib/config';
-import { parseQuery, rankResults, generateVariants, type SearchResult } from '@/lib/search-utils';
-import { fetchJson } from '@/lib/http';
-import { log } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { getApiKeys } from "@/lib/config";
+import {
+  parseQuery,
+  rankResults,
+  generateVariants,
+  type SearchResult,
+} from "@/lib/search-utils";
+import { fetchJson, isAbortError } from "@/lib/http";
+import { log } from "@/lib/logger";
 
 type TMDBSearchResult = {
   results: Array<{
@@ -15,7 +20,12 @@ type TMDBSearchResult = {
   }>;
 };
 
-async function fetchTMDB(tmdbKey: string, searchTitle: string, year: number | null, signal?: AbortSignal): Promise<TMDBSearchResult> {
+async function fetchTMDB(
+  tmdbKey: string,
+  searchTitle: string,
+  year: number | null,
+  signal?: AbortSignal,
+): Promise<TMDBSearchResult> {
   let url = `https://api.themoviedb.org/3/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(searchTitle)}&page=1`;
 
   if (year) {
@@ -27,7 +37,7 @@ async function fetchTMDB(tmdbKey: string, searchTitle: string, year: number | nu
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q')?.trim();
+  const query = searchParams.get("q")?.trim();
 
   if (!query || query.length < 2) {
     return NextResponse.json({ results: [] });
@@ -38,7 +48,10 @@ export async function GET(request: Request) {
   });
 
   if (!tmdbKey) {
-    return NextResponse.json({ error: 'TMDB API key not configured' }, { status: 500 });
+    return NextResponse.json(
+      { error: "TMDB API key not configured" },
+      { status: 500 },
+    );
   }
 
   try {
@@ -51,14 +64,14 @@ export async function GET(request: Request) {
 
     // Fetch all variants in parallel (with year filter if present)
     const allResults = await Promise.all(
-      allQueries.map((q) => fetchTMDB(tmdbKey, q, year, request.signal))
+      allQueries.map((q) => fetchTMDB(tmdbKey, q, year, request.signal)),
     );
     let combinedResults = allResults.flatMap((r) => r.results);
 
     // Fallback: if year filter returns empty, retry all without year
     if (year && combinedResults.length === 0) {
       const noYearResults = await Promise.all(
-        allQueries.map((q) => fetchTMDB(tmdbKey, q, null, request.signal))
+        allQueries.map((q) => fetchTMDB(tmdbKey, q, null, request.signal)),
       );
       combinedResults = noYearResults.flatMap((r) => r.results);
     }
@@ -70,13 +83,15 @@ export async function GET(request: Request) {
     }
 
     // Convert to SearchResult format for ranking
-    const searchResults: SearchResult[] = Array.from(movieIndex.values()).map((movie) => ({
-      id: movie.id,
-      title: movie.title,
-      release_date: movie.release_date,
-      popularity: movie.popularity,
-      vote_count: movie.vote_count,
-    }));
+    const searchResults: SearchResult[] = Array.from(movieIndex.values()).map(
+      (movie) => ({
+        id: movie.id,
+        title: movie.title,
+        release_date: movie.release_date,
+        popularity: movie.popularity,
+        vote_count: movie.vote_count,
+      }),
+    );
 
     // Re-rank results using smart ranking (top-K selection for k=10)
     const ranked = rankResults(searchResults, searchTitle, year, 10);
@@ -87,7 +102,7 @@ export async function GET(request: Request) {
       return {
         id: movie.id,
         title: movie.title,
-        year: movie.release_date?.split('-')[0] || null,
+        year: movie.release_date?.split("-")[0] || null,
         poster: original.poster_path
           ? `https://image.tmdb.org/t/p/w92${original.poster_path}`
           : null,
@@ -96,7 +111,10 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ results });
   } catch (err) {
-    log.error('search_failed', { query, error: (err as Error).message });
-    return NextResponse.json({ error: 'Search failed' }, { status: 500 });
+    if (isAbortError(err)) {
+      return new Response(null, { status: 499 });
+    }
+    log.error("search_failed", { query, error: (err as Error).message });
+    return NextResponse.json({ error: "Search failed" }, { status: 500 });
   }
 }

@@ -1,18 +1,21 @@
-import { NextResponse } from 'next/server';
-import { fetchImdbThemeSummary } from '@/lib/imdb-theme';
-import { log } from '@/lib/logger';
+import { NextResponse } from "next/server";
+import { fetchImdbThemeSummary } from "@/lib/imdb-theme";
+import { isAbortError } from "@/lib/http";
+import { log } from "@/lib/logger";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const imdbId = searchParams.get('imdbId');
-  const themeId = searchParams.get('themeId');
+  const imdbId = searchParams.get("imdbId");
+  const themeId = searchParams.get("themeId");
 
   if (!imdbId || !themeId) {
-    return NextResponse.json({ error: 'imdbId and themeId are required' }, { status: 400 });
+    return NextResponse.json(
+      { error: "imdbId and themeId are required" },
+      { status: 400 },
+    );
   }
 
   try {
-
     const env = {
       IMDB_THEME_GQL_URL: process.env.IMDB_THEME_GQL_URL,
       IMDB_THEME_GQL_OPERATION: process.env.IMDB_THEME_GQL_OPERATION,
@@ -23,15 +26,23 @@ export async function GET(request: Request) {
       IMDB_THEME_COOKIE: process.env.IMDB_THEME_COOKIE,
     };
 
-    const result = await fetchImdbThemeSummary(imdbId, themeId, env, request.signal);
+    const result = await fetchImdbThemeSummary(
+      imdbId,
+      themeId,
+      env,
+      request.signal,
+    );
     switch (result.status) {
-      case 'found':
+      case "found":
         return NextResponse.json({ summary: result.summary }, { status: 200 });
-      case 'not_found':
-        return NextResponse.json({ error: 'Summary unavailable' }, { status: 404 });
-      case 'config_error':
+      case "not_found":
+        return NextResponse.json(
+          { error: "Summary unavailable" },
+          { status: 404 },
+        );
+      case "config_error":
         return NextResponse.json({ error: result.error }, { status: 500 });
-      case 'upstream_error':
+      case "upstream_error":
         return NextResponse.json({ error: result.error }, { status: 502 });
       default: {
         const _exhaustive: never = result;
@@ -39,7 +50,17 @@ export async function GET(request: Request) {
       }
     }
   } catch (err) {
-    log.error('imdb_theme_failed', { imdbId, themeId, error: (err as Error).message });
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    if (isAbortError(err)) {
+      return new Response(null, { status: 499 });
+    }
+    log.error("imdb_theme_failed", {
+      imdbId,
+      themeId,
+      error: (err as Error).message,
+    });
+    return NextResponse.json(
+      { error: (err as Error).message },
+      { status: 500 },
+    );
   }
 }
