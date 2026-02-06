@@ -40,6 +40,7 @@ export type MovieInfo = {
   writers?: string[];
   cinematographer?: string;
   composer?: string;
+  editor?: string;
   cast?: string[];
 };
 

@@ -231,6 +231,7 @@ const CreditsList = memo(function CreditsList({ movie }: { movie: MovieInfo }) {
     { label: "Starring", value: movie.cast?.join(", ") },
     { label: "Written by", value: movie.writers?.join(", ") },
     { label: "Cinematography", value: movie.cinematographer },
+    { label: "Editing", value: movie.editor },
     { label: "Music", value: movie.composer },
   ].filter((c): c is { label: string; value: string } => !!c.value);
 

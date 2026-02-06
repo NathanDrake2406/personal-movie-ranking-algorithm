@@ -16,10 +16,46 @@ import { runFetchers } from "@/lib/fetchers";
 import { kvSet } from "@/lib/kv";
 import { log } from "@/lib/logger";
 
-const DELAY_MS = 2000;
+const CONCURRENCY = 5;
+const BATCH_DELAY_MS = 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function processMovie(
+  row: { imdbId: string; tmdbId: number | null; title: string },
+  index: number,
+  total: number,
+): Promise<boolean> {
+  const label = `[${index + 1}/${total}] ${row.imdbId} ${row.title}`;
+
+  if (!row.tmdbId) {
+    log.warn("backfill_skip", { imdbId: row.imdbId, reason: "no tmdb_id" });
+    return false;
+  }
+
+  const { movie } = await resolveByTmdbId(row.tmdbId, process.env);
+  const wikidata = fetchWikidataIds(movie.imdbId);
+
+  const { payload, deferred } = await runFetchers({
+    movie,
+    wikidata,
+    env: process.env,
+    kvSet,
+  });
+
+  await deferred();
+
+  const score = payload.overall?.score?.toFixed(1) ?? "N/A";
+  const count = payload.sources.filter((s) => s.normalized != null).length;
+  log.info("backfill_done", {
+    imdbId: row.imdbId,
+    label,
+    score,
+    sources: `${count}/${payload.sources.length}`,
+  });
+  return true;
 }
 
 async function main(): Promise<void> {
@@ -43,54 +79,30 @@ async function main(): Promise<void> {
     .from(movies);
 
   const total = allMovies.length;
-  log.info("backfill_start", { total });
+  log.info("backfill_start", { total, concurrency: CONCURRENCY });
 
   let succeeded = 0;
   let failed = 0;
 
-  for (let i = 0; i < total; i++) {
-    const row = allMovies[i];
-    const label = `[${i + 1}/${total}] ${row.imdbId} ${row.title}`;
+  for (let i = 0; i < total; i += CONCURRENCY) {
+    const batch = allMovies.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map((row, j) => processMovie(row, i + j, total)),
+    );
 
-    try {
-      if (!row.tmdbId) {
-        log.warn("backfill_skip", { imdbId: row.imdbId, reason: "no tmdb_id" });
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        succeeded++;
+      } else {
+        if (result.status === "rejected") {
+          log.warn("backfill_error", { error: (result.reason as Error).message });
+        }
         failed++;
-        continue;
       }
-
-      const { movie } = await resolveByTmdbId(row.tmdbId, process.env);
-      const wikidata = fetchWikidataIds(movie.imdbId);
-
-      const { payload, deferred } = await runFetchers({
-        movie,
-        wikidata,
-        env: process.env,
-        kvSet,
-      });
-
-      await deferred();
-
-      const score = payload.overall?.score?.toFixed(1) ?? "N/A";
-      const count = payload.sources.filter((s) => s.normalized != null).length;
-      log.info("backfill_done", {
-        imdbId: row.imdbId,
-        label,
-        score,
-        sources: `${count}/${payload.sources.length}`,
-      });
-      succeeded++;
-    } catch (err) {
-      log.warn("backfill_error", {
-        imdbId: row.imdbId,
-        label,
-        error: (err as Error).message,
-      });
-      failed++;
     }
 
-    if (i < total - 1) {
-      await sleep(DELAY_MS);
+    if (i + CONCURRENCY < total) {
+      await sleep(BATCH_DELAY_MS);
     }
   }
 

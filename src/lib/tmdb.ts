@@ -122,6 +122,9 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
     (c) => c.job === "Original Music Composer" || c.job === "Music",
   )?.name;
 
+  // Get editor
+  const editor = crew.find((c) => c.job === "Editor")?.name;
+
   const cast = movie.credits?.cast
     ?.sort((a, b) => a.order - b.order)
     .slice(0, 6)
@@ -143,6 +146,7 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
     writers: writers.length > 0 ? writers : undefined,
     cinematographer,
     composer,
+    editor,
     cast,
   };
 }
