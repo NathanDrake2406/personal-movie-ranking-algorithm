@@ -596,7 +596,13 @@
   font-size: clamp(32px, 5vw, 56px);
   font-weight: 700;
   line-height: 1.1;
-  margin: -0.25em 0 12px 0;
+  margin: -0.25em 0 0 0;
+}
+
+.movieMetaGroup {
+  display: flex;
+  flex-direction: column;
+  margin: 0px 0 6px 0;
 }
 
 .movieMeta {
@@ -607,7 +613,6 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   line-height: 1.6;
-  margin: 0 0 16px 0;
 }
 
 .movieOverview {
@@ -1068,6 +1073,10 @@
 
   .scoresGrid {
     grid-template-columns: 1fr;
+  }
+
+  .movieMetaGroup {
+    margin-top: 2px; 
   }
 }
 

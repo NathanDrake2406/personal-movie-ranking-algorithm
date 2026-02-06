@@ -381,14 +381,18 @@ export default function Home() {
             <div className={styles.movieInfo}>
               <div className={styles.movieInfoTop}>
                 <h2 className={styles.movieTitle}>{data.movie.title}</h2>
-                <p className={styles.movieMeta}>
-                  {[
-                    data.movie.year,
-                    data.movie.rating,
-                    data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
-                    data.movie.genres?.slice(0, 3).join(', '),
-                  ].filter(Boolean).join(' · ')}
-                </p>
+                <div className={styles.movieMetaGroup}>
+                  <p className={styles.movieMeta}>
+                    {[
+                      data.movie.year,
+                      data.movie.rating,
+                      data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                  {data.movie.genres && data.movie.genres.length > 0 && (
+                    <p className={styles.movieMeta}>{data.movie.genres.slice(0, 3).join(', ')}</p>
+                  )}
+                </div>
               </div>
               <div className={styles.movieInfoMiddle}>
                 {data.movie.overview && (
