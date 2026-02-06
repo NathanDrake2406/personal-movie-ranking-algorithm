@@ -194,7 +194,7 @@ const RTScoreCard = memo(function RTScoreCard({
   );
 });
 
-function CreditsList({ movie }: { movie: MovieInfo }) {
+const CreditsList = memo(function CreditsList({ movie }: { movie: MovieInfo }) {
   const credits = [
     { label: 'Directed by', value: movie.directors?.join(', ') || movie.director },
     { label: 'Starring', value: movie.cast?.join(', ') },
@@ -215,7 +215,7 @@ function CreditsList({ movie }: { movie: MovieInfo }) {
       ))}
     </div>
   );
-}
+});
 
 type ConsensusSectionProps = {
   consensus: { critics?: string; audience?: string };
