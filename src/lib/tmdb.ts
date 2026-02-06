@@ -1,4 +1,5 @@
 import { fetchJson } from './http';
+import { LRUCache } from './cache';
 import type { MovieInfo } from './types';
 
 type TmdbSearchResult = {
@@ -45,6 +46,7 @@ type TmdbDetailsResponse = {
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const IMG_BASE = 'https://image.tmdb.org/t/p/w500';
+const tmdbDetailsCache = new LRUCache<TmdbDetailsResponse>(60 * 60 * 1000, 200); // 1h TTL, 200 max
 
 export async function searchTmdbTitle(query: string, apiKey: string, signal?: AbortSignal) {
   const data = await fetchJson<{ results: TmdbSearchResult[] }>(
@@ -64,7 +66,15 @@ export async function findByImdb(imdbId: string, apiKey: string, signal?: AbortS
 }
 
 export async function getTmdbDetails(tmdbId: number, apiKey: string, signal?: AbortSignal) {
-  return fetchJson<TmdbDetailsResponse>(`${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,release_dates`, { signal });
+  const cached = tmdbDetailsCache.get(String(tmdbId));
+  if (cached) return cached;
+
+  const result = await fetchJson<TmdbDetailsResponse>(
+    `${TMDB_BASE}/movie/${tmdbId}?api_key=${apiKey}&append_to_response=credits,release_dates`,
+    { signal },
+  );
+  tmdbDetailsCache.set(String(tmdbId), result);
+  return result;
 }
 
 export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
