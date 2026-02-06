@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@upstash/redis": "^1.36.2",
     "@vercel/analytics": "^1.6.1",
     "fastest-levenshtein": "^1.0.16",
     "next": "16.1.6",
