@@ -1,4 +1,4 @@
-import type { SourceScore, OverallScore } from './types';
+import type { SourceScore, OverallScore } from "./types";
 
 /**
  * Flat weighted scoring algorithm.
@@ -9,7 +9,7 @@ import type { SourceScore, OverallScore } from './types';
 
 const WEIGHTS: Record<string, number> = {
   // Critics (51%)
-  rotten_tomatoes_top: 0.20,
+  rotten_tomatoes_top: 0.2,
   metacritic: 0.17,
   rotten_tomatoes_all: 0.14,
 
@@ -25,7 +25,9 @@ const WEIGHTS: Record<string, number> = {
 };
 
 /** The 9 weighted source keys — single source of truth for scoring + persistence. */
-export const WEIGHTED_SOURCE_KEYS: ReadonlySet<string> = new Set(Object.keys(WEIGHTS));
+export const WEIGHTED_SOURCE_KEYS: ReadonlySet<string> = new Set(
+  Object.keys(WEIGHTS),
+);
 
 // Minimum sources required for a verdict
 const MIN_SOURCES_FOR_VERDICT = 6;
@@ -35,7 +37,7 @@ export function computeOverallScore(
 ): OverallScore | null {
   // Filter to sources with valid normalized scores that are in our weight set
   const valid = scores.filter(
-    (s) => s.normalized != null && WEIGHTS[s.source] != null
+    (s) => s.normalized != null && WEIGHTS[s.source] != null,
   ) as Array<SourceScore & { normalized: number }>;
 
   if (valid.length < MIN_SOURCES_FOR_VERDICT) return null;

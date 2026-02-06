@@ -1,24 +1,39 @@
-import { Redis } from '@upstash/redis';
-import { log } from './logger';
-import type { ScorePayload } from './types';
+import { Redis } from "@upstash/redis";
+import { log } from "./logger";
+import type { ScorePayload } from "./types";
 
 // ─── TTL computation (pure) ──────────────────────────────────────────────────
 
-const SEVEN_DAYS_SEC = 7 * 24 * 60 * 60;
-const THIRTY_DAYS_SEC = 30 * 24 * 60 * 60;
+const ONE_DAY_SEC = 24 * 60 * 60;
+const SIXTY_DAYS_SEC = 60 * 24 * 60 * 60;
+const FOUR_MONTHS_MS = 4 * 30 * 24 * 60 * 60 * 1000;
+const ONE_YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
 
 export function computeKvTtl(
+  releaseDate: string | undefined,
   movieYear: string | undefined,
   now: Date = new Date(),
 ): number | null {
+  // Prefer exact release date for precise age calculation
+  if (releaseDate) {
+    const released = new Date(releaseDate);
+    if (!isNaN(released.getTime())) {
+      const ageMs = now.getTime() - released.getTime();
+      if (ageMs < FOUR_MONTHS_MS) return null;
+      if (ageMs < ONE_YEAR_MS) return ONE_DAY_SEC;
+      return SIXTY_DAYS_SEC;
+    }
+  }
+
+  // Fallback to year-only
   if (!movieYear) return null;
   const year = parseInt(movieYear, 10);
   if (isNaN(year)) return null;
 
   const age = now.getFullYear() - year;
-  if (age < 2) return null;
-  if (age <= 10) return SEVEN_DAYS_SEC;
-  return THIRTY_DAYS_SEC;
+  if (age < 1) return null;
+  if (age < 2) return ONE_DAY_SEC;
+  return SIXTY_DAYS_SEC;
 }
 
 // ─── Redis client (lazy singleton) ───────────────────────────────────────────
@@ -30,20 +45,21 @@ function getRedisClient(): Redis | null {
 
   // Support both Vercel-provisioned (KV_REST_API_*) and native Upstash (UPSTASH_REDIS_REST_*) names
   const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+  const token =
+    process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
-    log.info('kv_disabled', { reason: 'Missing Redis env vars' });
+    log.info("kv_disabled", { reason: "Missing Redis env vars" });
     redisClient = null;
     return null;
   }
 
   try {
     redisClient = new Redis({ url, token });
-    log.info('kv_enabled');
+    log.info("kv_enabled");
     return redisClient;
   } catch (err) {
-    log.warn('kv_init_failed', { error: (err as Error).message });
+    log.warn("kv_init_failed", { error: (err as Error).message });
     redisClient = null;
     return null;
   }
@@ -66,13 +82,13 @@ export async function kvGet(imdbId: string): Promise<ScorePayload | null> {
     if (!client) return null;
     const data = await client.get<CachedPayload>(kvKey(imdbId));
     if (data && data._v === KV_SCHEMA_VERSION) {
-      log.info('kv_hit', { imdbId });
+      log.info("kv_hit", { imdbId });
       const { _v, ...payload } = data;
       return payload;
     }
     return null;
   } catch (err) {
-    log.warn('kv_get_failed', { imdbId, error: (err as Error).message });
+    log.warn("kv_get_failed", { imdbId, error: (err as Error).message });
     return null;
   }
 }
@@ -80,18 +96,19 @@ export async function kvGet(imdbId: string): Promise<ScorePayload | null> {
 export async function kvSet(
   imdbId: string,
   payload: ScorePayload,
+  releaseDate: string | undefined,
   movieYear: string | undefined,
 ): Promise<void> {
   try {
-    const ttl = computeKvTtl(movieYear);
+    const ttl = computeKvTtl(releaseDate, movieYear);
     if (ttl === null) return;
     const client = getRedisClient();
     if (!client) return;
     const cached: CachedPayload = { ...payload, _v: KV_SCHEMA_VERSION };
     await client.set(kvKey(imdbId), cached, { ex: ttl });
-    log.info('kv_set', { imdbId, ttlSec: ttl });
+    log.info("kv_set", { imdbId, ttlSec: ttl });
   } catch (err) {
-    log.warn('kv_set_failed', { imdbId, error: (err as Error).message });
+    log.warn("kv_set_failed", { imdbId, error: (err as Error).message });
   }
 }
 

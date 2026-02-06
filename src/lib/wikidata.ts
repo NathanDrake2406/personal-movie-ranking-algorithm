@@ -1,6 +1,6 @@
-import { fetchJson } from './http';
-import { LRUCache } from './cache';
-import type { WikidataIds } from './types';
+import { fetchJson } from "./http";
+import { LRUCache } from "./cache";
+import type { WikidataIds } from "./types";
 
 type SparqlResponse = {
   results: {
@@ -15,11 +15,14 @@ type SparqlResponse = {
   };
 };
 
-const ENDPOINT = 'https://query.wikidata.org/sparql';
+const ENDPOINT = "https://query.wikidata.org/sparql";
 let wikidataCache = new LRUCache<WikidataIds>(24 * 60 * 60 * 1000, 500); // 24h TTL
 
 // Looks up Wikidata entity by IMDb ID (P345) and returns platform IDs
-export async function fetchWikidataIds(imdbId: string, signal?: AbortSignal): Promise<WikidataIds> {
+export async function fetchWikidataIds(
+  imdbId: string,
+  signal?: AbortSignal,
+): Promise<WikidataIds> {
   const cached = wikidataCache.get(imdbId);
   if (cached) return cached;
 
@@ -36,8 +39,9 @@ export async function fetchWikidataIds(imdbId: string, signal?: AbortSignal): Pr
   const url = `${ENDPOINT}?format=json&query=${encodeURIComponent(query)}`;
   const data = await fetchJson<SparqlResponse>(url, {
     headers: {
-      'user-agent': 'movies-ranking/1.0 (+https://movies-ranking-rho.vercel.app)',
-      accept: 'application/sparql-results+json',
+      "user-agent":
+        "movies-ranking/1.0 (+https://movies-ranking-rho.vercel.app)",
+      accept: "application/sparql-results+json",
     },
     signal,
   });

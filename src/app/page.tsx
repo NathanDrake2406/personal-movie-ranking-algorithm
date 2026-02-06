@@ -1,44 +1,51 @@
-'use client';
+"use client";
 
-import { useState, useRef, memo, useReducer, useMemo, useCallback } from 'react';
-import styles from './page.module.css';
-import { Poster } from './Poster';
-import { SearchCombobox } from './SearchCombobox';
-import dynamic from 'next/dynamic';
+import {
+  useState,
+  useRef,
+  memo,
+  useReducer,
+  useMemo,
+  useCallback,
+} from "react";
+import styles from "./page.module.css";
+import { Poster } from "./Poster";
+import { SearchCombobox } from "./SearchCombobox";
+import dynamic from "next/dynamic";
 
-const ThemesSection = dynamic(
-  () => import('./ThemesSection').then((m) => m.ThemesSection),
+const ThemesSection = dynamic(() =>
+  import("./ThemesSection").then((m) => m.ThemesSection),
 );
-import type { ScorePayload, SourceScore, MovieInfo } from '@/lib/types';
+import type { ScorePayload, SourceScore, MovieInfo } from "@/lib/types";
 
 // Discriminated union for fetch state - makes impossible states impossible
 type FetchState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'success'; data: ScorePayload }
-  | { status: 'error'; error: string };
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "success"; data: ScorePayload }
+  | { status: "error"; error: string };
 
 type FetchAction =
-  | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; data: ScorePayload }
-  | { type: 'FETCH_ERROR'; error: string }
-  | { type: 'RESET' };
+  | { type: "FETCH_START" }
+  | { type: "FETCH_SUCCESS"; data: ScorePayload }
+  | { type: "FETCH_ERROR"; error: string }
+  | { type: "RESET" };
 
 function fetchReducer(state: FetchState, action: FetchAction): FetchState {
   switch (action.type) {
-    case 'FETCH_START':
-      return { status: 'loading' };
-    case 'FETCH_SUCCESS':
-      return { status: 'success', data: action.data };
-    case 'FETCH_ERROR':
-      return { status: 'error', error: action.error };
-    case 'RESET':
-      return { status: 'idle' };
+    case "FETCH_START":
+      return { status: "loading" };
+    case "FETCH_SUCCESS":
+      return { status: "success", data: action.data };
+    case "FETCH_ERROR":
+      return { status: "error", error: action.error };
+    case "RESET":
+      return { status: "idle" };
   }
 }
 
 function formatScore(val: number | null) {
-  return val == null ? '—' : Math.round(val).toString();
+  return val == null ? "—" : Math.round(val).toString();
 }
 
 const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
@@ -48,13 +55,20 @@ const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
       <p className={styles.scoreValue}>{formatScore(score.normalized)}</p>
       {score.raw?.value != null ? (
         <p className={styles.scoreRaw}>
-          {score.raw.value} out of {score.raw.scale.split('-')[1]}
+          {score.raw.value} out of {score.raw.scale.split("-")[1]}
         </p>
       ) : null}
-      {score.fromFallback ? <p className={styles.scoreMuted}>via fallback</p> : null}
+      {score.fromFallback ? (
+        <p className={styles.scoreMuted}>via fallback</p>
+      ) : null}
       {score.error ? <p className={styles.scoreMuted}>{score.error}</p> : null}
       {score.url ? (
-        <a href={score.url} target="_blank" rel="noreferrer" className={styles.scoreLink}>
+        <a
+          href={score.url}
+          target="_blank"
+          rel="noreferrer"
+          className={styles.scoreLink}
+        >
           View source →
         </a>
       ) : null}
@@ -96,7 +110,8 @@ const AllocineScoreCard = memo(function AllocineScoreCard({
           </span>
           {allocinePress?.raw?.value != null ? (
             <span className={styles.rtMainScale}>
-              {allocinePress.raw.value} out of {allocinePress.raw.scale.split('-')[1]}
+              {allocinePress.raw.value} out of{" "}
+              {allocinePress.raw.scale.split("-")[1]}
             </span>
           ) : null}
           <span className={styles.rtMainLabel}>Press</span>
@@ -107,7 +122,8 @@ const AllocineScoreCard = memo(function AllocineScoreCard({
           </span>
           {allocineUser?.raw?.value != null ? (
             <span className={styles.rtMainScale}>
-              {allocineUser.raw.value} out of {allocineUser.raw.scale.split('-')[1]}
+              {allocineUser.raw.value} out of{" "}
+              {allocineUser.raw.scale.split("-")[1]}
             </span>
           ) : null}
           <span className={styles.rtMainLabel}>User</span>
@@ -116,7 +132,12 @@ const AllocineScoreCard = memo(function AllocineScoreCard({
 
       {error ? <p className={styles.scoreMuted}>{error}</p> : null}
       {url ? (
-        <a href={url} target="_blank" rel="noreferrer" className={styles.scoreLink}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className={styles.scoreLink}
+        >
           View source →
         </a>
       ) : null}
@@ -138,11 +159,11 @@ const RTScoreCard = memo(function RTScoreCard({
       <div className={styles.rtMainScores}>
         <div className={styles.rtMainScore}>
           <span className={styles.rtMainValue}>
-            {rtMain?.raw?.value ?? '—'}
+            {rtMain?.raw?.value ?? "—"}
           </span>
           {rtMain?.raw?.value != null ? (
             <span className={styles.rtMainScale}>
-              {rtMain.raw.value} out of {rtMain.raw.scale.split('-')[1]}
+              {rtMain.raw.value} out of {rtMain.raw.scale.split("-")[1]}
             </span>
           ) : null}
           <span className={styles.rtMainLabel}>Critics</span>
@@ -153,7 +174,7 @@ const RTScoreCard = memo(function RTScoreCard({
           </span>
           {rtAudience?.raw?.value != null ? (
             <span className={styles.rtMainScale}>
-              {rtAudience.raw.value} out of {rtAudience.raw.scale.split('-')[1]}
+              {rtAudience.raw.value} out of {rtAudience.raw.scale.split("-")[1]}
             </span>
           ) : null}
           <span className={styles.rtMainLabel}>Audience</span>
@@ -168,7 +189,7 @@ const RTScoreCard = memo(function RTScoreCard({
               <div className={styles.rtSubScore}>
                 <span className={styles.rtSubLabel}>All Critics Avg</span>
                 <span className={styles.rtSubValue}>
-                  {rtAll.raw?.value ?? '—'}
+                  {rtAll.raw?.value ?? "—"}
                 </span>
               </div>
             ) : null}
@@ -176,7 +197,7 @@ const RTScoreCard = memo(function RTScoreCard({
               <div className={styles.rtSubScore}>
                 <span className={styles.rtSubLabel}>Top Critics Avg</span>
                 <span className={styles.rtSubValue}>
-                  {rtTop.raw?.value ?? '—'}
+                  {rtTop.raw?.value ?? "—"}
                 </span>
               </div>
             ) : null}
@@ -184,9 +205,16 @@ const RTScoreCard = memo(function RTScoreCard({
         </>
       ) : null}
 
-      {rtMain?.fromFallback ? <p className={styles.scoreMuted}>via fallback</p> : null}
+      {rtMain?.fromFallback ? (
+        <p className={styles.scoreMuted}>via fallback</p>
+      ) : null}
       {rtMain?.url ? (
-        <a href={rtMain.url} target="_blank" rel="noreferrer" className={styles.scoreLink}>
+        <a
+          href={rtMain.url}
+          target="_blank"
+          rel="noreferrer"
+          className={styles.scoreLink}
+        >
           View source →
         </a>
       ) : null}
@@ -196,11 +224,14 @@ const RTScoreCard = memo(function RTScoreCard({
 
 const CreditsList = memo(function CreditsList({ movie }: { movie: MovieInfo }) {
   const credits = [
-    { label: 'Directed by', value: movie.directors?.join(', ') || movie.director },
-    { label: 'Starring', value: movie.cast?.join(', ') },
-    { label: 'Written by', value: movie.writers?.join(', ') },
-    { label: 'Cinematography', value: movie.cinematographer },
-    { label: 'Music', value: movie.composer },
+    {
+      label: "Directed by",
+      value: movie.directors?.join(", ") || movie.director,
+    },
+    { label: "Starring", value: movie.cast?.join(", ") },
+    { label: "Written by", value: movie.writers?.join(", ") },
+    { label: "Cinematography", value: movie.cinematographer },
+    { label: "Music", value: movie.composer },
   ].filter((c): c is { label: string; value: string } => !!c.value);
 
   if (credits.length === 0) return null;
@@ -221,7 +252,9 @@ type ConsensusSectionProps = {
   consensus: { critics?: string; audience?: string };
 };
 
-const ConsensusSection = memo(function ConsensusSection({ consensus }: ConsensusSectionProps) {
+const ConsensusSection = memo(function ConsensusSection({
+  consensus,
+}: ConsensusSectionProps) {
   if (!consensus.critics && !consensus.audience) return null;
 
   return (
@@ -244,14 +277,14 @@ const ConsensusSection = memo(function ConsensusSection({ consensus }: Consensus
 
 export default function Home() {
   const [resetKey, setResetKey] = useState(0);
-  const [fetchState, dispatch] = useReducer(fetchReducer, { status: 'idle' });
+  const [fetchState, dispatch] = useReducer(fetchReducer, { status: "idle" });
   const [lastTmdbId, setLastTmdbId] = useState<number | null>(null);
   const scoreAbortController = useRef<AbortController | null>(null);
 
   // Derived state from fetchState
-  const loading = fetchState.status === 'loading';
-  const error = fetchState.status === 'error' ? fetchState.error : null;
-  const data = fetchState.status === 'success' ? fetchState.data : null;
+  const loading = fetchState.status === "loading";
+  const error = fetchState.status === "error" ? fetchState.error : null;
+  const data = fetchState.status === "success" ? fetchState.data : null;
 
   const fetchScores = useCallback(async (tmdbId: number) => {
     // Cancel any in-flight request
@@ -259,68 +292,99 @@ export default function Home() {
     scoreAbortController.current = new AbortController();
 
     setLastTmdbId(tmdbId);
-    dispatch({ type: 'FETCH_START' });
+    dispatch({ type: "FETCH_START" });
     try {
-      const res = await fetch('/api/score', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
+      const res = await fetch("/api/score", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ tmdbId }),
         signal: scoreAbortController.current.signal,
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Request failed');
-      dispatch({ type: 'FETCH_SUCCESS', data: json as ScorePayload });
+      if (!res.ok) throw new Error(json.error || "Request failed");
+      dispatch({ type: "FETCH_SUCCESS", data: json as ScorePayload });
     } catch (err) {
       // Ignore aborted requests
-      if ((err as Error).name === 'AbortError') return;
-      dispatch({ type: 'FETCH_ERROR', error: (err as Error).message });
+      if ((err as Error).name === "AbortError") return;
+      dispatch({ type: "FETCH_ERROR", error: (err as Error).message });
     }
   }, []); // dispatch and setLastTmdbId are stable; scoreAbortController is a ref
 
   const handleReset = () => {
     setResetKey((k) => k + 1);
-    dispatch({ type: 'RESET' });
+    dispatch({ type: "RESET" });
   };
 
-  const { rtMain, rtAudience, rtAll, rtTop, allocinePress, allocineUser, cardDefs } = useMemo(() => {
-    const rtScores = data?.sources.filter((s) => s.source.startsWith('rotten_tomatoes')) ?? [];
-    const allocineScores = data?.sources.filter((s) => s.source.startsWith('allocine_')) ?? [];
-    const otherScores = data?.sources.filter((s) =>
-      !s.source.startsWith('rotten_tomatoes') && !s.source.startsWith('allocine_')
-    ) ?? [];
-    const rtMain = rtScores.find((s) => s.source === 'rotten_tomatoes');
-    const rtAudience = rtScores.find((s) => s.source === 'rotten_tomatoes_audience');
-    const rtAll = rtScores.find((s) => s.source === 'rotten_tomatoes_all');
-    const rtTop = rtScores.find((s) => s.source === 'rotten_tomatoes_top');
-    const allocinePress = allocineScores.find((s) => s.source === 'allocine_press');
-    const allocineUser = allocineScores.find((s) => s.source === 'allocine_user');
+  const {
+    rtMain,
+    rtAudience,
+    rtAll,
+    rtTop,
+    allocinePress,
+    allocineUser,
+    cardDefs,
+  } = useMemo(() => {
+    const rtScores =
+      data?.sources.filter((s) => s.source.startsWith("rotten_tomatoes")) ?? [];
+    const allocineScores =
+      data?.sources.filter((s) => s.source.startsWith("allocine_")) ?? [];
+    const otherScores =
+      data?.sources.filter(
+        (s) =>
+          !s.source.startsWith("rotten_tomatoes") &&
+          !s.source.startsWith("allocine_"),
+      ) ?? [];
+    const rtMain = rtScores.find((s) => s.source === "rotten_tomatoes");
+    const rtAudience = rtScores.find(
+      (s) => s.source === "rotten_tomatoes_audience",
+    );
+    const rtAll = rtScores.find((s) => s.source === "rotten_tomatoes_all");
+    const rtTop = rtScores.find((s) => s.source === "rotten_tomatoes_top");
+    const allocinePress = allocineScores.find(
+      (s) => s.source === "allocine_press",
+    );
+    const allocineUser = allocineScores.find(
+      (s) => s.source === "allocine_user",
+    );
 
     type CardDef =
-      | { type: 'individual'; sortKey: string; score: SourceScore }
-      | { type: 'rt'; sortKey: string }
-      | { type: 'allocine'; sortKey: string };
+      | { type: "individual"; sortKey: string; score: SourceScore }
+      | { type: "rt"; sortKey: string }
+      | { type: "allocine"; sortKey: string };
 
     const cardDefs: CardDef[] = [
-      ...otherScores.map((s): CardDef => ({
-        type: 'individual',
-        sortKey: s.label.toLowerCase(),
-        score: s,
-      })),
+      ...otherScores.map(
+        (s): CardDef => ({
+          type: "individual",
+          sortKey: s.label.toLowerCase(),
+          score: s,
+        }),
+      ),
       ...(rtScores.length > 0
-        ? [{ type: 'rt' as const, sortKey: 'rotten tomatoes' }]
+        ? [{ type: "rt" as const, sortKey: "rotten tomatoes" }]
         : []),
       ...(allocineScores.length > 0
-        ? [{ type: 'allocine' as const, sortKey: 'allocine' }]
+        ? [{ type: "allocine" as const, sortKey: "allocine" }]
         : []),
     ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
 
-    return { rtMain, rtAudience, rtAll, rtTop, allocinePress, allocineUser, cardDefs };
+    return {
+      rtMain,
+      rtAudience,
+      rtAll,
+      rtTop,
+      allocinePress,
+      allocineUser,
+      cardDefs,
+    };
   }, [data]);
 
   return (
     <div className={styles.page}>
       <header className={styles.masthead}>
-        <p className={styles.mastheadTitle} onClick={handleReset}>The Film Index</p>
+        <p className={styles.mastheadTitle} onClick={handleReset}>
+          The Film Index
+        </p>
       </header>
 
       <section className={styles.hero}>
@@ -331,10 +395,7 @@ export default function Home() {
           Distilled into one score using a weighted algorithm.
         </p>
 
-        <SearchCombobox
-          key={resetKey}
-          onSelect={fetchScores}
-        />
+        <SearchCombobox key={resetKey} onSelect={fetchScores} />
 
         {error ? (
           <div className={styles.errorWrapper}>
@@ -386,11 +447,16 @@ export default function Home() {
                     {[
                       data.movie.year,
                       data.movie.rating,
-                      data.movie.runtime && `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
-                    ].filter(Boolean).join(' · ')}
+                      data.movie.runtime &&
+                        `${Math.floor(data.movie.runtime / 60)}h ${data.movie.runtime % 60}m`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                   {data.movie.genres && data.movie.genres.length > 0 && (
-                    <p className={styles.movieMeta}>{data.movie.genres.slice(0, 3).join(', ')}</p>
+                    <p className={styles.movieMeta}>
+                      {data.movie.genres.slice(0, 3).join(", ")}
+                    </p>
                   )}
                 </div>
               </div>
@@ -400,7 +466,9 @@ export default function Home() {
                 )}
                 <div className={styles.verdictBox}>
                   <p className={styles.verdictLabel}>Our Verdict</p>
-                  <p className={styles.verdictScore}>{formatScore(data.overall?.score ?? null)}</p>
+                  <p className={styles.verdictScore}>
+                    {formatScore(data.overall?.score ?? null)}
+                  </p>
                 </div>
               </div>
               <div className={styles.movieInfoExtra}>
@@ -429,9 +497,11 @@ export default function Home() {
             <div className={styles.scoresGrid}>
               {cardDefs.map((card) => {
                 switch (card.type) {
-                  case 'individual':
-                    return <ScoreCard key={card.score.source} score={card.score} />;
-                  case 'rt':
+                  case "individual":
+                    return (
+                      <ScoreCard key={card.score.source} score={card.score} />
+                    );
+                  case "rt":
                     return (
                       <RTScoreCard
                         key="rotten_tomatoes"
@@ -441,7 +511,7 @@ export default function Home() {
                         rtTop={rtTop}
                       />
                     );
-                  case 'allocine':
+                  case "allocine":
                     return (
                       <AllocineScoreCard
                         key="allocine"

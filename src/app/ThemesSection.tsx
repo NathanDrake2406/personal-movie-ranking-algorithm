@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useReducer, useCallback } from 'react';
-import styles from './page.module.css';
+import { useReducer, useCallback } from "react";
+import styles from "./page.module.css";
 
 type Theme = {
   id: string;
   label: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
+  sentiment: "positive" | "negative" | "neutral";
 };
 
 export type ThemesSectionProps = {
@@ -22,19 +22,20 @@ type ThemesState = {
 };
 
 type ThemesAction =
-  | { type: 'TOGGLE_THEME'; themeId: string }
-  | { type: 'FETCH_START'; themeId: string }
-  | { type: 'FETCH_SUCCESS'; themeId: string; summary: string }
-  | { type: 'FETCH_ERROR'; themeId: string; error: string };
+  | { type: "TOGGLE_THEME"; themeId: string }
+  | { type: "FETCH_START"; themeId: string }
+  | { type: "FETCH_SUCCESS"; themeId: string; summary: string }
+  | { type: "FETCH_ERROR"; themeId: string; error: string };
 
 function themesReducer(state: ThemesState, action: ThemesAction): ThemesState {
   switch (action.type) {
-    case 'TOGGLE_THEME':
+    case "TOGGLE_THEME":
       return {
         ...state,
-        activeThemeId: state.activeThemeId === action.themeId ? null : action.themeId,
+        activeThemeId:
+          state.activeThemeId === action.themeId ? null : action.themeId,
       };
-    case 'FETCH_START': {
+    case "FETCH_START": {
       const nextErrors = { ...state.errors };
       delete nextErrors[action.themeId];
       return {
@@ -43,17 +44,19 @@ function themesReducer(state: ThemesState, action: ThemesAction): ThemesState {
         errors: nextErrors,
       };
     }
-    case 'FETCH_SUCCESS':
+    case "FETCH_SUCCESS":
       return {
         ...state,
         summaries: { ...state.summaries, [action.themeId]: action.summary },
-        loadingThemeId: state.loadingThemeId === action.themeId ? null : state.loadingThemeId,
+        loadingThemeId:
+          state.loadingThemeId === action.themeId ? null : state.loadingThemeId,
       };
-    case 'FETCH_ERROR':
+    case "FETCH_ERROR":
       return {
         ...state,
         errors: { ...state.errors, [action.themeId]: action.error },
-        loadingThemeId: state.loadingThemeId === action.themeId ? null : state.loadingThemeId,
+        loadingThemeId:
+          state.loadingThemeId === action.themeId ? null : state.loadingThemeId,
       };
   }
 }
@@ -71,7 +74,7 @@ export function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
 
   const handleChipClick = useCallback(
     async (theme: Theme) => {
-      dispatch({ type: 'TOGGLE_THEME', themeId: theme.id });
+      dispatch({ type: "TOGGLE_THEME", themeId: theme.id });
 
       // After toggling off, or if already cached/loading, skip fetch
       // We need to check against the *next* state, which after TOGGLE_THEME
@@ -83,7 +86,7 @@ export function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
       // If already cached or currently loading this theme, skip fetch
       if (summaries[theme.id] || loadingThemeId === theme.id) return;
 
-      dispatch({ type: 'FETCH_START', themeId: theme.id });
+      dispatch({ type: "FETCH_START", themeId: theme.id });
 
       try {
         const res = await fetch(
@@ -93,10 +96,18 @@ export function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
           throw new Error(`Request failed: ${res.status}`);
         }
         const json = (await res.json()) as { summary?: string };
-        if (!json.summary) throw new Error('Summary unavailable');
-        dispatch({ type: 'FETCH_SUCCESS', themeId: theme.id, summary: json.summary });
+        if (!json.summary) throw new Error("Summary unavailable");
+        dispatch({
+          type: "FETCH_SUCCESS",
+          themeId: theme.id,
+          summary: json.summary,
+        });
       } catch (err) {
-        dispatch({ type: 'FETCH_ERROR', themeId: theme.id, error: (err as Error).message });
+        dispatch({
+          type: "FETCH_ERROR",
+          themeId: theme.id,
+          error: (err as Error).message,
+        });
       }
     },
     [activeThemeId, imdbId, loadingThemeId, summaries],
@@ -117,12 +128,12 @@ export function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
             key={theme.id}
             type="button"
             className={`${styles.themeChip} ${
-              theme.sentiment === 'positive'
+              theme.sentiment === "positive"
                 ? styles.themeChipPositive
-                : theme.sentiment === 'negative'
-                ? styles.themeChipNegative
-                : styles.themeChipNeutral
-            } ${activeThemeId === theme.id ? styles.themeChipActive : ''}`}
+                : theme.sentiment === "negative"
+                  ? styles.themeChipNegative
+                  : styles.themeChipNeutral
+            } ${activeThemeId === theme.id ? styles.themeChipActive : ""}`}
             onClick={() => handleChipClick(theme)}
           >
             {theme.label}
@@ -139,9 +150,13 @@ export function ThemesSection({ themes, imdbId }: ThemesSectionProps) {
             </div>
           )}
           {!isLoading && activeError && (
-            <p className={styles.themeSummaryError}>Summary unavailable. Try the IMDb link below.</p>
+            <p className={styles.themeSummaryError}>
+              Summary unavailable. Try the IMDb link below.
+            </p>
           )}
-          {!isLoading && !activeError && activeSummary && <p>{activeSummary}</p>}
+          {!isLoading && !activeError && activeSummary && (
+            <p>{activeSummary}</p>
+          )}
         </div>
       )}
     </div>

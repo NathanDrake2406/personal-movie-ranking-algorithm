@@ -1,4 +1,4 @@
-import { distance } from 'fastest-levenshtein';
+import { distance } from "fastest-levenshtein";
 
 /**
  * Parsed query result with optional year extraction
@@ -63,14 +63,14 @@ export function normalizeTitle(title: string): string {
     title
       .toLowerCase()
       // Remove diacritics
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       // Remove leading articles
-      .replace(/^(the|a|an)\s+/i, '')
+      .replace(/^(the|a|an)\s+/i, "")
       // Remove punctuation
-      .replace(/[^\w\s]/g, '')
+      .replace(/[^\w\s]/g, "")
       // Collapse whitespace
-      .replace(/\s+/g, ' ')
+      .replace(/\s+/g, " ")
       .trim()
   );
 }
@@ -90,27 +90,27 @@ export function phoneticKey(str: string): string {
   return (
     normalized
       // Handle common digraphs first
-      .replace(/ph/g, 'f')
-      .replace(/gh/g, 'g')
-      .replace(/th/g, 't')
-      .replace(/wh/g, 'w')
+      .replace(/ph/g, "f")
+      .replace(/gh/g, "g")
+      .replace(/th/g, "t")
+      .replace(/wh/g, "w")
       // Remove standalone h (often silent or misplaced in typos)
-      .replace(/h/g, '')
+      .replace(/h/g, "")
       // Map similar consonants
-      .replace(/[ck]/g, 'k')
-      .replace(/[sz]/g, 's')
-      .replace(/[dt]/g, 't')
-      .replace(/[bp]/g, 'p')
-      .replace(/[fvw]/g, 'f')
-      .replace(/[gj]/g, 'g')
-      .replace(/[mn]/g, 'n')
-      .replace(/[lr]/g, 'r')
+      .replace(/[ck]/g, "k")
+      .replace(/[sz]/g, "s")
+      .replace(/[dt]/g, "t")
+      .replace(/[bp]/g, "p")
+      .replace(/[fvw]/g, "f")
+      .replace(/[gj]/g, "g")
+      .replace(/[mn]/g, "n")
+      .replace(/[lr]/g, "r")
       // Remove vowels (except first char) - helps with typos like "Godfahter"
-      .replace(/(?!^)[aeiou]/g, '')
+      .replace(/(?!^)[aeiou]/g, "")
       // Collapse repeated characters
-      .replace(/(.)\1+/g, '$1')
+      .replace(/(.)\1+/g, "$1")
       // Remove spaces
-      .replace(/\s/g, '')
+      .replace(/\s/g, "")
   );
 }
 
@@ -149,7 +149,7 @@ export function phoneticMatch(a: string, b: string): boolean {
  * Score weights for ranking
  */
 const WEIGHTS = {
-  SIMILARITY_BASE: 0.20, // 20% base weight for title similarity
+  SIMILARITY_BASE: 0.2, // 20% base weight for title similarity
   NEAR_EXACT_BONUS: 10, // Bonus for >0.9 similarity
   PREFIX_MATCH_BONUS: 20, // Bonus when query is prefix of title (franchise/sequels)
   YEAR_MATCH_BONUS: 10, // Bonus for matching requested year
@@ -162,16 +162,10 @@ const WEIGHTS = {
 const CURRENT_YEAR = new Date().getFullYear();
 const RECENCY_DECAY_YEARS = 20; // Full bonus for current year, decays to 0 over 20 years
 
-/**
- * Check if query is a prefix of title (for franchise/sequel matching)
- */
-function isPrefixMatch(query: string, title: string): boolean {
-  const normQuery = normalizeTitle(query);
-  const normTitle = normalizeTitle(title);
-  return isPrefixMatchNormalized(normQuery, normTitle);
-}
-
-function isPrefixMatchNormalized(normQuery: string, normTitle: string): boolean {
+function isPrefixMatchNormalized(
+  normQuery: string,
+  normTitle: string,
+): boolean {
   return normTitle.startsWith(normQuery) && normTitle.length > normQuery.length;
 }
 
@@ -182,7 +176,7 @@ function isPrefixMatchNormalized(normQuery: string, normTitle: string): boolean 
 function getRecencyBonus(releaseDate: string | undefined): number {
   if (!releaseDate) return 0;
 
-  const year = parseInt(releaseDate.split('-')[0], 10);
+  const year = parseInt(releaseDate.split("-")[0], 10);
   if (isNaN(year)) return 0;
 
   const yearsAgo = CURRENT_YEAR - year;
@@ -233,7 +227,7 @@ function calculateScore(
 
   // Year match bonus (when user specifies a year)
   if (queryYear && result.release_date) {
-    const resultYear = parseInt(result.release_date.split('-')[0], 10);
+    const resultYear = parseInt(result.release_date.split("-")[0], 10);
     if (resultYear === queryYear) {
       score += WEIGHTS.YEAR_MATCH_BONUS;
     }
@@ -244,7 +238,8 @@ function calculateScore(
 
   // Popularity (0-20 points)
   const popularity = result.popularity ?? 0;
-  const normalizedPopularity = maxPopularity > 0 ? popularity / maxPopularity : 0;
+  const normalizedPopularity =
+    maxPopularity > 0 ? popularity / maxPopularity : 0;
   score += normalizedPopularity * 100 * WEIGHTS.POPULARITY_WEIGHT;
 
   // Vote count (0-20 points, log-scaled for cultural significance)
@@ -304,7 +299,11 @@ function topK<T extends { score: number }>(items: T[], k: number): T[] {
   // Min-heap: root is the smallest score in the current top-k
   const heap: T[] = [];
 
-  const swap = (i: number, j: number) => { const t = heap[i]; heap[i] = heap[j]; heap[j] = t; };
+  const swap = (i: number, j: number) => {
+    const t = heap[i];
+    heap[i] = heap[j];
+    heap[j] = t;
+  };
 
   const siftUp = (i: number) => {
     while (i > 0) {
@@ -322,7 +321,8 @@ function topK<T extends { score: number }>(items: T[], k: number): T[] {
       const left = 2 * i + 1;
       const right = 2 * i + 2;
       if (left < n && heap[left].score < heap[smallest].score) smallest = left;
-      if (right < n && heap[right].score < heap[smallest].score) smallest = right;
+      if (right < n && heap[right].score < heap[smallest].score)
+        smallest = right;
       if (smallest === i) break;
       swap(i, smallest);
       i = smallest;
@@ -353,27 +353,27 @@ export function generateVariants(query: string): string[] {
   const trimmed = query.trim();
 
   // & ↔ and swaps
-  if (trimmed.includes('&')) {
-    variants.add(trimmed.replace(/\s*&\s*/g, ' and '));
+  if (trimmed.includes("&")) {
+    variants.add(trimmed.replace(/\s*&\s*/g, " and "));
   }
   if (/\band\b/i.test(trimmed)) {
-    variants.add(trimmed.replace(/\band\b/gi, '&'));
+    variants.add(trimmed.replace(/\band\b/gi, "&"));
   }
 
   // Remove apostrophes
   if (trimmed.includes("'")) {
-    variants.add(trimmed.replace(/'/g, ''));
+    variants.add(trimmed.replace(/'/g, ""));
   }
 
   // Remove hyphens (two variants: with space, without space)
-  if (trimmed.includes('-')) {
-    variants.add(trimmed.replace(/-/g, ' '));
-    variants.add(trimmed.replace(/-/g, ''));
+  if (trimmed.includes("-")) {
+    variants.add(trimmed.replace(/-/g, " "));
+    variants.add(trimmed.replace(/-/g, ""));
   }
 
   // Remove original query and empty strings
   variants.delete(trimmed);
-  variants.delete('');
+  variants.delete("");
 
   return Array.from(variants);
 }

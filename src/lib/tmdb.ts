@@ -1,6 +1,6 @@
-import { fetchJson } from './http';
-import { LRUCache } from './cache';
-import type { MovieInfo } from './types';
+import { fetchJson } from "./http";
+import { LRUCache } from "./cache";
+import type { MovieInfo } from "./types";
 
 type TmdbSearchResult = {
   id: number;
@@ -44,11 +44,15 @@ type TmdbDetailsResponse = {
   };
 };
 
-const TMDB_BASE = 'https://api.themoviedb.org/3';
-const IMG_BASE = 'https://image.tmdb.org/t/p/w500';
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const IMG_BASE = "https://image.tmdb.org/t/p/w500";
 const tmdbDetailsCache = new LRUCache<TmdbDetailsResponse>(60 * 60 * 1000, 200); // 1h TTL, 200 max
 
-export async function searchTmdbTitle(query: string, apiKey: string, signal?: AbortSignal) {
+export async function searchTmdbTitle(
+  query: string,
+  apiKey: string,
+  signal?: AbortSignal,
+) {
   const data = await fetchJson<{ results: TmdbSearchResult[] }>(
     `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}`,
     { signal },
@@ -56,7 +60,11 @@ export async function searchTmdbTitle(query: string, apiKey: string, signal?: Ab
   return data.results ?? [];
 }
 
-export async function findByImdb(imdbId: string, apiKey: string, signal?: AbortSignal) {
+export async function findByImdb(
+  imdbId: string,
+  apiKey: string,
+  signal?: AbortSignal,
+) {
   const data = await fetchJson<TmdbFindResponse>(
     `${TMDB_BASE}/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`,
     { signal },
@@ -65,7 +73,11 @@ export async function findByImdb(imdbId: string, apiKey: string, signal?: AbortS
   return match ?? null;
 }
 
-export async function getTmdbDetails(tmdbId: number, apiKey: string, signal?: AbortSignal) {
+export async function getTmdbDetails(
+  tmdbId: number,
+  apiKey: string,
+  signal?: AbortSignal,
+) {
   const cached = tmdbDetailsCache.get(String(tmdbId));
   if (cached) return cached;
 
@@ -82,32 +94,32 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
 
   // Get content rating (US preferred, fallback to GB)
   const releaseDates = movie.release_dates?.results ?? [];
-  const usRelease = releaseDates.find((r) => r.iso_3166_1 === 'US');
-  const gbRelease = releaseDates.find((r) => r.iso_3166_1 === 'GB');
+  const usRelease = releaseDates.find((r) => r.iso_3166_1 === "US");
+  const gbRelease = releaseDates.find((r) => r.iso_3166_1 === "GB");
   const releaseData = usRelease ?? gbRelease;
-  const rating = releaseData?.release_dates.find((rd) => rd.certification)?.certification;
+  const rating = releaseData?.release_dates.find(
+    (rd) => rd.certification,
+  )?.certification;
 
   // Get all directors (some films have multiple, e.g., Coen Brothers)
-  const directors = crew
-    .filter((c) => c.job === 'Director')
-    .map((c) => c.name);
+  const directors = crew.filter((c) => c.job === "Director").map((c) => c.name);
 
   // Get writers (Screenplay, Writer, Story) - deduplicated
-  const writerJobs = ['Screenplay', 'Writer', 'Story'];
-  const writers = [...new Set(
-    crew
-      .filter((c) => writerJobs.includes(c.job))
-      .map((c) => c.name)
-  )].slice(0, 3); // Limit to 3 writers
+  const writerJobs = ["Screenplay", "Writer", "Story"];
+  const writers = [
+    ...new Set(
+      crew.filter((c) => writerJobs.includes(c.job)).map((c) => c.name),
+    ),
+  ].slice(0, 3); // Limit to 3 writers
 
   // Get cinematographer (Director of Photography)
   const cinematographer = crew.find(
-    (c) => c.job === 'Director of Photography' || c.job === 'Cinematography'
+    (c) => c.job === "Director of Photography" || c.job === "Cinematography",
   )?.name;
 
   // Get composer
   const composer = crew.find(
-    (c) => c.job === 'Original Music Composer' || c.job === 'Music'
+    (c) => c.job === "Original Music Composer" || c.job === "Music",
   )?.name;
 
   const cast = movie.credits?.cast
@@ -116,9 +128,10 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
     .map((c) => c.name);
 
   return {
-    imdbId: movie.imdb_id ?? '',
+    imdbId: movie.imdb_id ?? "",
     title: movie.title,
     year: movie.release_date?.slice(0, 4),
+    releaseDate: movie.release_date || undefined,
     poster: movie.poster_path ? `${IMG_BASE}${movie.poster_path}` : undefined,
     tmdbId: movie.id,
     overview: movie.overview,
@@ -136,7 +149,7 @@ export function tmdbToMovieInfo(movie: TmdbDetailsResponse): MovieInfo {
 
 export function tmdbSearchResultToInfo(result: TmdbSearchResult): MovieInfo {
   return {
-    imdbId: '',
+    imdbId: "",
     title: result.title,
     year: result.release_date?.slice(0, 4),
     poster: result.poster_path ? `${IMG_BASE}${result.poster_path}` : undefined,

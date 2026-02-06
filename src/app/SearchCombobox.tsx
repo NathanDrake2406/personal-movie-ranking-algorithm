@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
-import styles from './page.module.css';
-import { Poster } from './Poster';
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
+import styles from "./page.module.css";
+import { Poster } from "./Poster";
 
 type SearchResult = {
   id: number;
@@ -17,7 +17,7 @@ export type SearchComboboxProps = {
 };
 
 export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -56,7 +56,7 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
         setHighlightedIndex(-1);
       } catch (err) {
         // Ignore aborted requests
-        if ((err as Error).name !== 'AbortError') {
+        if ((err as Error).name !== "AbortError") {
           setSuggestions([]);
         }
       } finally {
@@ -75,20 +75,23 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setShowDropdown(false);
         setHighlightedIndex(-1);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Scroll highlighted item into view
   useEffect(() => {
     if (highlightedIndex >= 0 && listboxRef.current) {
       const item = listboxRef.current.children[highlightedIndex] as HTMLElement;
-      item?.scrollIntoView({ block: 'nearest' });
+      item?.scrollIntoView({ block: "nearest" });
     }
   }, [highlightedIndex]);
 
@@ -105,31 +108,35 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
     if (suggestions.length === 0) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
         if (!showDropdown) {
           setShowDropdown(true);
           setHighlightedIndex(0);
         } else {
-          setHighlightedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
+          setHighlightedIndex((prev) =>
+            prev < suggestions.length - 1 ? prev + 1 : 0,
+          );
         }
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
         if (!showDropdown) {
           setShowDropdown(true);
           setHighlightedIndex(suggestions.length - 1);
         } else {
-          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+          setHighlightedIndex((prev) =>
+            prev > 0 ? prev - 1 : suggestions.length - 1,
+          );
         }
         break;
-      case 'Enter':
+      case "Enter":
         if (showDropdown && highlightedIndex >= 0) {
           e.preventDefault();
           handleSelect(suggestions[highlightedIndex]);
         }
         break;
-      case 'Escape':
+      case "Escape":
         setShowDropdown(false);
         setHighlightedIndex(-1);
         break;
@@ -153,7 +160,11 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
           aria-autocomplete="list"
           aria-expanded={showDropdown && suggestions.length > 0}
           aria-controls="search-listbox"
-          aria-activedescendant={highlightedIndex >= 0 ? `option-${suggestions[highlightedIndex]?.id}` : undefined}
+          aria-activedescendant={
+            highlightedIndex >= 0
+              ? `option-${suggestions[highlightedIndex]?.id}`
+              : undefined
+          }
           disabled={disabled}
         />
         {searchLoading && <span className={styles.inputSpinner} />}
@@ -162,7 +173,7 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
             type="button"
             className={styles.clearBtn}
             onClick={() => {
-              setQuery('');
+              setQuery("");
               setSuggestions([]);
               setShowDropdown(false);
               inputRef.current?.focus();
@@ -175,12 +186,22 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
       </div>
 
       {showDropdown && suggestions.length > 0 ? (
-        <ul id="search-listbox" role="listbox" className={styles.dropdown} ref={listboxRef}>
+        <ul
+          id="search-listbox"
+          role="listbox"
+          className={styles.dropdown}
+          ref={listboxRef}
+        >
           {suggestions.map((movie, index) => (
-            <li key={movie.id} role="option" id={`option-${movie.id}`} aria-selected={index === highlightedIndex}>
+            <li
+              key={movie.id}
+              role="option"
+              id={`option-${movie.id}`}
+              aria-selected={index === highlightedIndex}
+            >
               <button
                 type="button"
-                className={`${styles.dropdownItem} ${index === highlightedIndex ? styles.dropdownItemHighlighted : ''}`}
+                className={`${styles.dropdownItem} ${index === highlightedIndex ? styles.dropdownItemHighlighted : ""}`}
                 onClick={() => handleSelect(movie)}
                 onMouseEnter={() => setHighlightedIndex(index)}
               >
@@ -208,7 +229,10 @@ export function SearchCombobox({ onSelect, disabled }: SearchComboboxProps) {
         </ul>
       ) : null}
 
-      {showDropdown && query.length >= 2 && suggestions.length === 0 && !searchLoading ? (
+      {showDropdown &&
+      query.length >= 2 &&
+      suggestions.length === 0 &&
+      !searchLoading ? (
         <div className={styles.noResults}>No results found</div>
       ) : null}
     </div>

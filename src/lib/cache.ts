@@ -5,7 +5,7 @@ export class LRUCache<T> {
 
   constructor(
     private ttlMs: number,
-    private maxSize: number = 1000
+    private maxSize: number = 1000,
   ) {}
 
   get(key: string): T | null {

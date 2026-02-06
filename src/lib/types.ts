@@ -1,14 +1,14 @@
 export type SourceName =
-  | 'allocine_press'
-  | 'allocine_user'
-  | 'douban'
-  | 'imdb'
-  | 'letterboxd'
-  | 'metacritic'
-  | 'rotten_tomatoes'
-  | 'rotten_tomatoes_all'
-  | 'rotten_tomatoes_audience'
-  | 'rotten_tomatoes_top';
+  | "allocine_press"
+  | "allocine_user"
+  | "douban"
+  | "imdb"
+  | "letterboxd"
+  | "metacritic"
+  | "rotten_tomatoes"
+  | "rotten_tomatoes_all"
+  | "rotten_tomatoes_audience"
+  | "rotten_tomatoes_top";
 
 export type SourceScore = {
   source: SourceName;
@@ -28,6 +28,7 @@ export type MovieInfo = {
   imdbId: string;
   title: string;
   year?: string;
+  releaseDate?: string; // "YYYY-MM-DD" from TMDB
   poster?: string;
   tmdbId?: number; // Still used for movie resolution, just not for scoring
   overview?: string;
@@ -60,7 +61,7 @@ export type OverallScore = {
 export type ImdbTheme = {
   id: string;
   label: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
+  sentiment: "positive" | "negative" | "neutral";
 };
 
 export type RTConsensus = {

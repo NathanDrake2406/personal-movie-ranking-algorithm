@@ -1,4 +1,4 @@
-import type { SourceScore } from './types';
+import type { SourceScore } from "./types";
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
 
@@ -21,34 +21,34 @@ export function normalizeScore(source: SourceScore): SourceScore {
   let normalized: number | null = null;
 
   switch (name) {
-    case 'douban':
+    case "douban":
       // Douban ratings are 0-10
       normalized = clamp((v / 10) * 100);
       break;
-    case 'imdb':
+    case "imdb":
       // IMDb ratings are compressed - boost high scores
       normalized = clamp(boostImdb(v));
       break;
-    case 'letterboxd':
+    case "letterboxd":
       // Letterboxd ratings are 0-5
       normalized = clamp((v / 5) * 100);
       break;
-    case 'metacritic':
+    case "metacritic":
       // Metascore already 0-100
       normalized = clamp(v);
       break;
-    case 'allocine_press':
-    case 'allocine_user':
+    case "allocine_press":
+    case "allocine_user":
       // AlloCiné ratings are 0-5 stars
       normalized = clamp((v / 5) * 100);
       break;
-    case 'rotten_tomatoes':
-    case 'rotten_tomatoes_all':
-    case 'rotten_tomatoes_top':
+    case "rotten_tomatoes":
+    case "rotten_tomatoes_all":
+    case "rotten_tomatoes_top":
       // RT percent already 0-100
       normalized = clamp(v);
       break;
-    case 'rotten_tomatoes_audience':
+    case "rotten_tomatoes_audience":
       // RT Audience average rating is 0-5
       normalized = clamp((v / 5) * 100);
       break;

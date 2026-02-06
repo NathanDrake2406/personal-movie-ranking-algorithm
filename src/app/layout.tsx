@@ -10,7 +10,8 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "Movie Rankings",
-  description: "Bayesian movie scoring algorithm aggregating IMDb, Letterboxd, RT, Metacritic, Douban & Mubi",
+  description:
+    "Bayesian movie scoring algorithm aggregating IMDb, Letterboxd, RT, Metacritic, Douban & Mubi",
 };
 
 export default function RootLayout({

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, memo, SyntheticEvent } from 'react';
-import styles from './page.module.css';
+import { useState, memo, SyntheticEvent } from "react";
+import styles from "./page.module.css";
 
 export type PosterProps = {
   src: string;
@@ -13,7 +13,15 @@ export type PosterProps = {
   responsive?: boolean;
 };
 
-export const Poster = memo(function Poster({ src, alt, width, height, className, skeletonClassName, responsive }: PosterProps) {
+export const Poster = memo(function Poster({
+  src,
+  alt,
+  width,
+  height,
+  className,
+  skeletonClassName,
+  responsive,
+}: PosterProps) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -28,7 +36,9 @@ export const Poster = memo(function Poster({ src, alt, width, height, className,
   return (
     <div className={styles.posterContainer} style={containerStyle}>
       {!loaded && !error && (
-        <div className={`${styles.posterSkeleton} ${skeletonClassName || ''}`} />
+        <div
+          className={`${styles.posterSkeleton} ${skeletonClassName || ""}`}
+        />
       )}
       {!error && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -37,7 +47,7 @@ export const Poster = memo(function Poster({ src, alt, width, height, className,
           alt={alt}
           width={width}
           height={height}
-          className={`${className || ''} ${loaded ? styles.posterLoaded : styles.posterLoading}`}
+          className={`${className || ""} ${loaded ? styles.posterLoaded : styles.posterLoading}`}
           onLoad={handleLoad}
           onError={() => setError(true)}
         />

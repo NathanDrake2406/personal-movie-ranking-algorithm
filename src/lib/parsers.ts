@@ -1,6 +1,6 @@
 // src/lib/parsers.ts
 
-import type { ImdbTheme, RTConsensus } from './types';
+import type { ImdbTheme, RTConsensus } from "./types";
 
 /** Parsed rating values before normalization */
 export type ParsedRating = {
@@ -26,14 +26,16 @@ export type ParsedAllocineRatings = {
 
 export function parseAllocineHtml(html: string): ParsedAllocineRatings {
   // Find all .stareval-note values
-  const noteMatches = [...html.matchAll(/class="stareval-note"[^>]*>([^<]+)</g)];
+  const noteMatches = [
+    ...html.matchAll(/class="stareval-note"[^>]*>([^<]+)</g),
+  ];
 
   // Check if "Presse" section exists (indicates first rating is press)
-  const hasPress = html.includes('> Presse <') || html.includes('>Presse<');
+  const hasPress = html.includes("> Presse <") || html.includes(">Presse<");
 
   const parseNote = (text?: string): number | null => {
     if (!text) return null;
-    const num = parseFloat(text.replace(',', '.').trim());
+    const num = parseFloat(text.replace(",", ".").trim());
     return Number.isFinite(num) ? num : null;
   };
 
@@ -77,11 +79,15 @@ export function parseMetacriticHtml(html: string): ParsedRating {
 
   const value = valueMatch?.[1]
     ? Number(valueMatch[1])
-    : (legacyValueMatch?.[1] ? Number(legacyValueMatch[1]) : null);
+    : legacyValueMatch?.[1]
+      ? Number(legacyValueMatch[1])
+      : null;
 
   const count = countMatch?.[1]
     ? parseInt(countMatch[1], 10)
-    : (legacyCountMatch?.[1] ? parseInt(legacyCountMatch[1], 10) : null);
+    : legacyCountMatch?.[1]
+      ? parseInt(legacyCountMatch[1], 10)
+      : null;
 
   return { value: Number.isFinite(value) ? value : null, count };
 }
@@ -107,7 +113,9 @@ export function parseGoogleDoubanSearchHtml(html: string): string | null {
 }
 
 // RT API response parser
-export function parseRTApiResponse(json: { meterScore?: number }): { tomatometer: number | null } {
+export function parseRTApiResponse(json: { meterScore?: number }): {
+  tomatometer: number | null;
+} {
   return { tomatometer: json.meterScore ?? null };
 }
 
@@ -122,10 +130,18 @@ export type ParsedRTCritics = {
 
 export function parseRTCriticsHtml(html: string): ParsedRTCritics {
   const matchScore = html.match(/"criticsAll"[^}]*"score"\s*:\s*"(\d+)"/);
-  const matchAll = html.match(/"criticsAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-  const matchTop = html.match(/"criticsTop"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-  const matchAllCount = html.match(/"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/);
-  const matchTopCount = html.match(/"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/);
+  const matchAll = html.match(
+    /"criticsAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/,
+  );
+  const matchTop = html.match(
+    /"criticsTop"[^}]*"averageRating"\s*:\s*"([\d.]+)"/,
+  );
+  const matchAllCount = html.match(
+    /"criticsAll"[^}]*"ratingCount"\s*:\s*(\d+)/,
+  );
+  const matchTopCount = html.match(
+    /"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/,
+  );
 
   return {
     tomatometer: matchScore?.[1] ? Number(matchScore[1]) : null,
@@ -144,30 +160,44 @@ export type ParsedRTAudience = {
 };
 
 export function parseRTAudienceHtml(html: string): ParsedRTAudience {
-  const matchVerified = html.match(/"audienceVerified"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-  const matchAll = html.match(/"audienceAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/);
-  const matchVerifiedCount = html.match(/"audienceVerified"[^}]*"reviewCount"\s*:\s*(\d+)/);
-  const matchAllCount = html.match(/"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/);
+  const matchVerified = html.match(
+    /"audienceVerified"[^}]*"averageRating"\s*:\s*"([\d.]+)"/,
+  );
+  const matchAll = html.match(
+    /"audienceAll"[^}]*"averageRating"\s*:\s*"([\d.]+)"/,
+  );
+  const matchVerifiedCount = html.match(
+    /"audienceVerified"[^}]*"reviewCount"\s*:\s*(\d+)/,
+  );
+  const matchAllCount = html.match(
+    /"audienceAll"[^}]*"reviewCount"\s*:\s*(\d+)/,
+  );
 
   const isVerifiedAudience = matchVerified?.[1] != null;
   const audienceAvg = matchVerified?.[1]
     ? Number(matchVerified[1])
-    : (matchAll?.[1] ? Number(matchAll[1]) : null);
+    : matchAll?.[1]
+      ? Number(matchAll[1])
+      : null;
   const audienceCount = isVerifiedAudience
-    ? (matchVerifiedCount?.[1] ? parseInt(matchVerifiedCount[1], 10) : null)
-    : (matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null);
+    ? matchVerifiedCount?.[1]
+      ? parseInt(matchVerifiedCount[1], 10)
+      : null
+    : matchAllCount?.[1]
+      ? parseInt(matchAllCount[1], 10)
+      : null;
 
   return { audienceAvg, isVerifiedAudience, audienceCount };
 }
 
-const THEME_LABEL_KEYS = ['label', 'name', 'displayText', 'text', 'title'];
-const THEME_ID_KEYS = ['id', 'themeId', 'topicId', 'key', 'slug', 'value'];
+const THEME_LABEL_KEYS = ["label", "name", "displayText", "text", "title"];
+const THEME_ID_KEYS = ["id", "themeId", "topicId", "key", "slug", "value"];
 
 function slugifyThemeLabel(label: string): string {
   return label
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .trim();
 }
 
@@ -176,7 +206,9 @@ function normalizeThemeLabel(label: string): string {
 }
 
 function extractNextData(html: string): unknown | null {
-  const match = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  const match = html.match(
+    /<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/,
+  );
   if (!match?.[1]) return null;
   try {
     return JSON.parse(match[1]);
@@ -187,7 +219,7 @@ function extractNextData(html: string): unknown | null {
 
 function buildThemeIdMap(data: unknown): Map<string, string> {
   const map = new Map<string, string>();
-  if (!data || typeof data !== 'object') return map;
+  if (!data || typeof data !== "object") return map;
 
   const queue: unknown[] = [data];
   let head = 0;
@@ -196,7 +228,7 @@ function buildThemeIdMap(data: unknown): Map<string, string> {
   while (head < queue.length && inspected < 5000) {
     const current = queue[head++];
     inspected += 1;
-    if (!current || typeof current !== 'object') continue;
+    if (!current || typeof current !== "object") continue;
 
     const obj = current as Record<string, unknown>;
     const label = pickStringField(obj, THEME_LABEL_KEYS);
@@ -206,32 +238,38 @@ function buildThemeIdMap(data: unknown): Map<string, string> {
     }
 
     for (const value of Object.values(obj)) {
-      if (value && typeof value === 'object') queue.push(value);
+      if (value && typeof value === "object") queue.push(value);
     }
   }
 
   return map;
 }
 
-function pickStringField(obj: Record<string, unknown>, keys: string[]): string | null {
+function pickStringField(
+  obj: Record<string, unknown>,
+  keys: string[],
+): string | null {
   for (const key of keys) {
     const value = obj[key];
-    if (typeof value === 'string' && value.trim().length > 0) return value.trim();
+    if (typeof value === "string" && value.trim().length > 0)
+      return value.trim();
   }
   return null;
 }
 
-function normalizeSentiment(value: unknown): 'positive' | 'negative' | 'neutral' | null {
-  if (typeof value !== 'string') return null;
+function normalizeSentiment(
+  value: unknown,
+): "positive" | "negative" | "neutral" | null {
+  if (typeof value !== "string") return null;
   const normalized = value.toLowerCase();
-  if (normalized.includes('positive')) return 'positive';
-  if (normalized.includes('negative')) return 'negative';
-  if (normalized.includes('neutral')) return 'neutral';
+  if (normalized.includes("positive")) return "positive";
+  if (normalized.includes("negative")) return "negative";
+  if (normalized.includes("neutral")) return "neutral";
   return null;
 }
 
 function parseImdbThemesFromNextData(data: unknown): ImdbTheme[] {
-  if (!data || typeof data !== 'object') return [];
+  if (!data || typeof data !== "object") return [];
 
   const results: ImdbTheme[] = [];
   const seen = new Set<string>();
@@ -242,10 +280,12 @@ function parseImdbThemesFromNextData(data: unknown): ImdbTheme[] {
   while (head < queue.length && inspected < 5000) {
     const current = queue[head++];
     inspected += 1;
-    if (!current || typeof current !== 'object') continue;
+    if (!current || typeof current !== "object") continue;
 
     const obj = current as Record<string, unknown>;
-    const sentiment = normalizeSentiment(obj.sentiment ?? obj.tone ?? obj.polarity);
+    const sentiment = normalizeSentiment(
+      obj.sentiment ?? obj.tone ?? obj.polarity,
+    );
     const label = pickStringField(obj, THEME_LABEL_KEYS);
     if (sentiment && label) {
       const rawId = pickStringField(obj, THEME_ID_KEYS);
@@ -257,7 +297,7 @@ function parseImdbThemesFromNextData(data: unknown): ImdbTheme[] {
     }
 
     for (const value of Object.values(obj)) {
-      if (value && typeof value === 'object') queue.push(value);
+      if (value && typeof value === "object") queue.push(value);
     }
   }
 
@@ -268,14 +308,17 @@ export function parseImdbThemes(html: string): ImdbTheme[] {
   const nextData = extractNextData(html);
   const themeIdMap = buildThemeIdMap(nextData);
 
-  const matches = html.matchAll(/aria-label="([^"]+) (positive|negative|neutral) sentiment"/g);
+  const matches = html.matchAll(
+    /aria-label="([^"]+) (positive|negative|neutral) sentiment"/g,
+  );
   const themes: ImdbTheme[] = [];
   const seen = new Set<string>();
 
   for (const match of matches) {
     const label = match[1];
-    const sentiment = match[2] as 'positive' | 'negative' | 'neutral';
-    const id = themeIdMap.get(normalizeThemeLabel(label)) || slugifyThemeLabel(label);
+    const sentiment = match[2] as "positive" | "negative" | "neutral";
+    const id =
+      themeIdMap.get(normalizeThemeLabel(label)) || slugifyThemeLabel(label);
     if (seen.has(id)) continue;
     themes.push({ id, label, sentiment });
     seen.add(id);
@@ -289,22 +332,26 @@ export function parseImdbThemes(html: string): ImdbTheme[] {
 
 export function parseImdbSummary(html: string): string | null {
   // Extract __NEXT_DATA__ JSON from the page
-  const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/);
+  const nextDataMatch = html.match(
+    /<script[^>]*id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/,
+  );
   if (!nextDataMatch?.[1]) return null;
 
   try {
     const data = JSON.parse(nextDataMatch[1]);
-    const plaidHtml = data?.props?.pageProps?.mainColumnData?.reviewSummary?.overall?.medium?.value?.plaidHtml;
+    const plaidHtml =
+      data?.props?.pageProps?.mainColumnData?.reviewSummary?.overall?.medium
+        ?.value?.plaidHtml;
     if (!plaidHtml) return null;
 
     // Decode HTML entities and clean up
     const cleaned = plaidHtml
       .replace(/&#39;/g, "'")
       .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/^Reviewers say\s*/i, '')
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/^Reviewers say\s*/i, "")
       .trim();
     return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   } catch {
@@ -312,20 +359,23 @@ export function parseImdbSummary(html: string): string | null {
   }
 }
 
-export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): string | null {
-  if (!data || typeof data !== 'object') return null;
+export function parseImdbThemeSummaryResponse(
+  data: unknown,
+  themeId: string,
+): string | null {
+  if (!data || typeof data !== "object") return null;
 
   const cleanSummary = (raw: string): string => {
     const cleaned = decodeHtmlEntities(stripTags(raw))
-      .replace(/\s*AI-generated from (?:the text of )?user reviews.*$/i, '')
-      .replace(/^Reviewers say\s*/i, '')
-      .replace(/\s+/g, ' ')
+      .replace(/\s*AI-generated from (?:the text of )?user reviews.*$/i, "")
+      .replace(/^Reviewers say\s*/i, "")
+      .replace(/\s+/g, " ")
       .trim();
     return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   };
 
   const summaryFromNode = (node: unknown): string | null => {
-    if (!node || typeof node !== 'object') return null;
+    if (!node || typeof node !== "object") return null;
     const obj = node as Record<string, unknown>;
     const candidate =
       obj.plaidHtml ??
@@ -335,25 +385,36 @@ export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): s
       obj.summary ??
       obj.description ??
       null;
-    if (typeof candidate === 'string') return cleanSummary(candidate);
-    if (candidate && typeof candidate === 'object') {
+    if (typeof candidate === "string") return cleanSummary(candidate);
+    if (candidate && typeof candidate === "object") {
       const inner = candidate as Record<string, unknown>;
-      const innerCandidate = inner.plaidHtml ?? inner.plainText ?? inner.text ?? inner.value ?? null;
-      if (typeof innerCandidate === 'string') return cleanSummary(innerCandidate);
-      if (innerCandidate && typeof innerCandidate === 'object') {
+      const innerCandidate =
+        inner.plaidHtml ?? inner.plainText ?? inner.text ?? inner.value ?? null;
+      if (typeof innerCandidate === "string")
+        return cleanSummary(innerCandidate);
+      if (innerCandidate && typeof innerCandidate === "object") {
         const deeper = innerCandidate as Record<string, unknown>;
-        const deepCandidate = deeper.plaidHtml ?? deeper.plainText ?? deeper.text ?? null;
-        if (typeof deepCandidate === 'string') return cleanSummary(deepCandidate);
+        const deepCandidate =
+          deeper.plaidHtml ?? deeper.plainText ?? deeper.text ?? null;
+        if (typeof deepCandidate === "string")
+          return cleanSummary(deepCandidate);
       }
     }
     return null;
   };
 
   const matchesThemeId = (node: Record<string, unknown>): boolean => {
-    const candidates = [node.id, node.themeId, node.topicId, node.key, node.slug, node.value];
+    const candidates = [
+      node.id,
+      node.themeId,
+      node.topicId,
+      node.key,
+      node.slug,
+      node.value,
+    ];
     return candidates.some((value) => {
-      if (typeof value === 'string') return value === themeId;
-      if (typeof value === 'number') return String(value) === themeId;
+      if (typeof value === "string") return value === themeId;
+      if (typeof value === "number") return String(value) === themeId;
       return false;
     });
   };
@@ -364,7 +425,7 @@ export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): s
   while (head < queue.length && inspected < 5000) {
     const current = queue[head++];
     inspected += 1;
-    if (!current || typeof current !== 'object') continue;
+    if (!current || typeof current !== "object") continue;
     const obj = current as Record<string, unknown>;
 
     if (matchesThemeId(obj)) {
@@ -378,7 +439,7 @@ export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): s
     }
 
     for (const value of Object.values(obj)) {
-      if (value && typeof value === 'object') queue.push(value);
+      if (value && typeof value === "object") queue.push(value);
     }
   }
 
@@ -395,7 +456,7 @@ export function parseRTConsensus(html: string): RTConsensus {
 
   // Extract critics consensus
   const criticsMatch = html.match(
-    /<div[^>]*id="critics-consensus"[^>]*>[\s\S]*?<p>([^<]*(?:<em>[^<]*<\/em>[^<]*)*)<\/p>/
+    /<div[^>]*id="critics-consensus"[^>]*>[\s\S]*?<p>([^<]*(?:<em>[^<]*<\/em>[^<]*)*)<\/p>/,
   );
   if (criticsMatch?.[1]) {
     result.critics = decodeHtmlEntities(stripTags(criticsMatch[1]));
@@ -403,7 +464,7 @@ export function parseRTConsensus(html: string): RTConsensus {
 
   // Extract audience consensus
   const audienceMatch = html.match(
-    /<div[^>]*id="audience-consensus"[^>]*>[\s\S]*?<p>([^<]*(?:<em>[^<]*<\/em>[^<]*)*)<\/p>/
+    /<div[^>]*id="audience-consensus"[^>]*>[\s\S]*?<p>([^<]*(?:<em>[^<]*<\/em>[^<]*)*)<\/p>/,
   );
   if (audienceMatch?.[1]) {
     result.audience = decodeHtmlEntities(stripTags(audienceMatch[1]));
@@ -413,15 +474,15 @@ export function parseRTConsensus(html: string): RTConsensus {
 }
 
 function stripTags(html: string): string {
-  return html.replace(/<[^>]*>/g, '');
+  return html.replace(/<[^>]*>/g, "");
 }
 
 function decodeHtmlEntities(text: string): string {
   return text
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .trim();
 }

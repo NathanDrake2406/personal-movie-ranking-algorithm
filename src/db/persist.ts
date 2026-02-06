@@ -1,10 +1,10 @@
-import { eq } from 'drizzle-orm';
-import { getDb } from './client';
-import { movies, scores } from './schema';
-import type { NewMovie, NewScore } from './schema';
-import type { ScorePayload, SourceScore } from '@/lib/types';
-import { WEIGHTED_SOURCE_KEYS } from '@/lib/scoring';
-import { log } from '@/lib/logger';
+import { eq } from "drizzle-orm";
+import { getDb } from "./client";
+import { movies, scores } from "./schema";
+import type { NewMovie, NewScore } from "./schema";
+import type { ScorePayload, SourceScore } from "@/lib/types";
+import { WEIGHTED_SOURCE_KEYS } from "@/lib/scoring";
+import { log } from "@/lib/logger";
 
 /** Bump when weights or scoring algorithm change — enables re-derivation queries. */
 export const CURRENT_SCORE_VERSION = 1;
@@ -17,7 +17,7 @@ const BACKFILL_STALE_TIMESTAMP_MS = 0;
  * Guards against: empty string → 0, non-integer floats, out-of-range values.
  */
 export function parseYear(year: string | undefined): number | null {
-  if (year == null || year === '') return null;
+  if (year == null || year === "") return null;
   const n = Number(year);
   if (!Number.isInteger(n)) return null;
   if (n < 1888 || n > 2100) return null;
@@ -155,14 +155,14 @@ export async function persistScores(
       }
     });
 
-    log.info('db_persisted', {
+    log.info("db_persisted", {
       imdbId: payload.movie.imdbId,
       sourcesCount: movieRow.sourcesCount,
       isComplete: movieRow.isComplete,
       backfill: isBackfill,
     });
   } catch (err) {
-    log.warn('db_persist_failed', {
+    log.warn("db_persist_failed", {
       imdbId: payload.movie.imdbId,
       error: (err as Error).message,
     });
