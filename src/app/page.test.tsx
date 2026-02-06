@@ -19,6 +19,53 @@ vi.mock('./page.module.css', () => ({
 // Mock scrollIntoView (not available in jsdom)
 Element.prototype.scrollIntoView = vi.fn();
 
+// Helper: mock search + score responses, select a movie, and return when results render
+async function selectMovieWithPayload(
+  moviePayload: Record<string, unknown>,
+) {
+  const user = userEvent.setup();
+
+  mockFetch.mockImplementation((url: string) => {
+    if (url.includes('/api/search')) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            results: [{ id: 1, title: 'Test Movie', year: '2024', poster: null }],
+          }),
+      });
+    }
+    if (url.includes('/api/score')) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            movie: { title: 'Test Movie', year: '2024', imdbId: 'tt9999999', poster: null, ...moviePayload },
+            sources: [],
+            overall: { score: 75 },
+            missingSources: [],
+          }),
+      });
+    }
+    return Promise.reject(new Error('Unhandled URL: ' + url));
+  });
+
+  render(<Home />);
+
+  const input = screen.getByRole('combobox');
+  await user.type(input, 'Test');
+
+  await waitFor(() => {
+    expect(screen.getByText('Test Movie')).toBeInTheDocument();
+  });
+
+  await user.click(screen.getByText('Test Movie'));
+
+  await waitFor(() => {
+    expect(screen.getByText('75')).toBeInTheDocument();
+  });
+}
+
 describe('Home page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,6 +73,67 @@ describe('Home page', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('CreditsList rendering', () => {
+    it('renders all credit types when all fields are present', async () => {
+      await selectMovieWithPayload({
+        directors: ['Denis Villeneuve'],
+        cast: ['Timothée Chalamet', 'Zendaya'],
+        writers: ['Jon Spaihts', 'Denis Villeneuve'],
+        cinematographer: 'Greig Fraser',
+        composer: 'Hans Zimmer',
+      });
+
+      expect(screen.getByText('Directed by')).toBeInTheDocument();
+      expect(screen.getByText('Denis Villeneuve')).toBeInTheDocument();
+      expect(screen.getByText('Starring')).toBeInTheDocument();
+      expect(screen.getByText('Timothée Chalamet, Zendaya')).toBeInTheDocument();
+      expect(screen.getByText('Written by')).toBeInTheDocument();
+      expect(screen.getByText('Cinematography')).toBeInTheDocument();
+      expect(screen.getByText('Music')).toBeInTheDocument();
+    });
+
+    it('renders nothing when no credits are present', async () => {
+      await selectMovieWithPayload({});
+
+      expect(screen.queryByText('Directed by')).not.toBeInTheDocument();
+      expect(screen.queryByText('Starring')).not.toBeInTheDocument();
+      expect(screen.queryByText('Written by')).not.toBeInTheDocument();
+      expect(screen.queryByText('Cinematography')).not.toBeInTheDocument();
+      expect(screen.queryByText('Music')).not.toBeInTheDocument();
+    });
+
+    it('prefers directors[] over director', async () => {
+      await selectMovieWithPayload({
+        directors: ['Joel Coen', 'Ethan Coen'],
+        director: 'Joel Coen',
+      });
+
+      expect(screen.getByText('Joel Coen, Ethan Coen')).toBeInTheDocument();
+    });
+
+    it('falls back to director when directors is empty', async () => {
+      await selectMovieWithPayload({
+        directors: [],
+        director: 'Christopher Nolan',
+      });
+
+      expect(screen.getByText('Christopher Nolan')).toBeInTheDocument();
+    });
+
+    it('renders only available credits', async () => {
+      await selectMovieWithPayload({
+        cast: ['Al Pacino'],
+        composer: 'Nino Rota',
+      });
+
+      expect(screen.getByText('Starring')).toBeInTheDocument();
+      expect(screen.getByText('Music')).toBeInTheDocument();
+      expect(screen.queryByText('Directed by')).not.toBeInTheDocument();
+      expect(screen.queryByText('Written by')).not.toBeInTheDocument();
+      expect(screen.queryByText('Cinematography')).not.toBeInTheDocument();
+    });
   });
 
   describe('fetchScores race condition handling', () => {

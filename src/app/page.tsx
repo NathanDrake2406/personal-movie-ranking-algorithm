@@ -4,7 +4,7 @@ import { useState, useRef, memo, useReducer, useCallback } from 'react';
 import styles from './page.module.css';
 import { Poster } from './Poster';
 import { SearchCombobox } from './SearchCombobox';
-import type { ScorePayload, SourceScore } from '@/lib/types';
+import type { ScorePayload, SourceScore, MovieInfo } from '@/lib/types';
 
 // Discriminated union for fetch state - makes impossible states impossible
 type FetchState =
@@ -283,6 +283,29 @@ const ThemesSection = memo(function ThemesSection({ themes, imdbId }: ThemesSect
   );
 });
 
+function CreditsList({ movie }: { movie: MovieInfo }) {
+  const credits = [
+    { label: 'Directed by', value: movie.directors?.join(', ') || movie.director },
+    { label: 'Starring', value: movie.cast?.join(', ') },
+    { label: 'Written by', value: movie.writers?.join(', ') },
+    { label: 'Cinematography', value: movie.cinematographer },
+    { label: 'Music', value: movie.composer },
+  ].filter((c): c is { label: string; value: string } => !!c.value);
+
+  if (credits.length === 0) return null;
+
+  return (
+    <div className={styles.posterCredits}>
+      {credits.map((c) => (
+        <p key={c.label} className={styles.creditLine}>
+          <span className={styles.creditLabel}>{c.label}</span>
+          <span className={styles.creditNames}>{c.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 type ConsensusSectionProps = {
   consensus: { critics?: string; audience?: string };
 };
@@ -443,42 +466,7 @@ export default function Home() {
               ) : (
                 <div className={styles.posterPlaceholder}>No poster</div>
               )}
-              {!!(data.movie.directors?.length || data.movie.director || data.movie.writers?.length || data.movie.cinematographer || data.movie.composer || data.movie.cast?.length) && (
-                <div className={styles.posterCredits}>
-                  {(data.movie.directors?.length || data.movie.director) ? (
-                    <p className={styles.creditLine}>
-                      <span className={styles.creditLabel}>Directed by</span>
-                      <span className={styles.creditNames}>
-                        {data.movie.directors?.length ? data.movie.directors.join(', ') : data.movie.director}
-                      </span>
-                    </p>
-                  ) : null}
-                  {data.movie.cast?.length ? (
-                    <p className={styles.creditLine}>
-                      <span className={styles.creditLabel}>Starring</span>
-                      <span className={styles.creditNames}>{data.movie.cast.join(', ')}</span>
-                    </p>
-                  ) : null}
-                  {data.movie.writers?.length ? (
-                    <p className={styles.creditLine}>
-                      <span className={styles.creditLabel}>Written by</span>
-                      <span className={styles.creditNames}>{data.movie.writers.join(', ')}</span>
-                    </p>
-                  ) : null}
-                  {data.movie.cinematographer && (
-                    <p className={styles.creditLine}>
-                      <span className={styles.creditLabel}>Cinematography</span>
-                      <span className={styles.creditNames}>{data.movie.cinematographer}</span>
-                    </p>
-                  )}
-                  {data.movie.composer && (
-                    <p className={styles.creditLine}>
-                      <span className={styles.creditLabel}>Music</span>
-                      <span className={styles.creditNames}>{data.movie.composer}</span>
-                    </p>
-                  )}
-                </div>
-              )}
+              <CreditsList movie={data.movie} />
             </div>
             <div className={styles.movieInfo}>
               <div className={styles.movieInfoTop}>
