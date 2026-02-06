@@ -4,7 +4,11 @@ import { useState, useRef, memo, useReducer } from 'react';
 import styles from './page.module.css';
 import { Poster } from './Poster';
 import { SearchCombobox } from './SearchCombobox';
-import { ThemesSection } from './ThemesSection';
+import dynamic from 'next/dynamic';
+
+const ThemesSection = dynamic(
+  () => import('./ThemesSection').then((m) => m.ThemesSection),
+);
 import type { ScorePayload, SourceScore, MovieInfo } from '@/lib/types';
 
 // Discriminated union for fetch state - makes impossible states impossible
