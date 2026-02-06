@@ -130,7 +130,7 @@ async function requestWithRetries(
 
       await sleep(
         retryDelayMs(attempt, res.headers.get("retry-after")),
-        init.signal,
+        init.signal ?? undefined,
       );
     } catch (err) {
       if (isAbortError(err)) throw err;
@@ -143,7 +143,7 @@ async function requestWithRetries(
         throw err;
       }
 
-      await sleep(retryDelayMs(attempt), init.signal);
+      await sleep(retryDelayMs(attempt), init.signal ?? undefined);
     }
   }
 
