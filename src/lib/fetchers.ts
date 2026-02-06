@@ -383,15 +383,24 @@ async function fetchMetacritic(ctx: FetcherContext, fallbackValue?: number | nul
     };
   }
 
-  // Try original slug first
-  let result = await scrapeMetacritic(slug, ctx.signal);
+  // Try both slug variants in parallel when year is available
+  let result: { value: number | null; count: number | null } | null = null;
   let usedSlug = slug;
 
-  // If failed and we have a year, try slug with year appended (e.g., "seven-samurai-1954")
-  if (!result && ctx.movie.year) {
+  if (ctx.movie.year) {
     const slugWithYear = `${slug}-${ctx.movie.year}`;
-    result = await scrapeMetacritic(slugWithYear, ctx.signal);
-    if (result) usedSlug = slugWithYear;
+    const [canonical, withYear] = await Promise.all([
+      scrapeMetacritic(slug, ctx.signal),
+      scrapeMetacritic(slugWithYear, ctx.signal),
+    ]);
+    if (canonical) {
+      result = canonical;
+    } else if (withYear) {
+      result = withYear;
+      usedSlug = slugWithYear;
+    }
+  } else {
+    result = await scrapeMetacritic(slug, ctx.signal);
   }
 
   if (result) {
