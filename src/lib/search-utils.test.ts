@@ -4,6 +4,7 @@ import {
   normalizeTitle,
   phoneticKey,
   similarity,
+  tokenSimilarity,
   phoneticMatch,
   rankResults,
   generateVariants,
@@ -167,6 +168,54 @@ describe("similarity", () => {
   });
 });
 
+describe("tokenSimilarity", () => {
+  it("returns 1 for identical strings", () => {
+    expect(tokenSimilarity("Dark Knight", "Dark Knight")).toBe(1);
+  });
+
+  it("handles word transpositions perfectly", () => {
+    // "Knight Dark" vs "The Dark Knight" — each word matches 1:1
+    expect(tokenSimilarity("Knight Dark", "The Dark Knight")).toBe(1);
+  });
+
+  it("handles close word-level typos", () => {
+    // "Eight Grade" vs "Eighth Grade" — "eight"→"eighth" is close, "grade"→"grade" is exact
+    const sim = tokenSimilarity("Eight Grade", "Eighth Grade");
+    expect(sim).toBeGreaterThan(0.9);
+  });
+
+  it("handles transpositions far better than full-string similarity", () => {
+    // Full-string Levenshtein: "redemption shawshank" vs "shawshank redemption" is very low
+    // Token-level: each word matches perfectly regardless of order
+    const tokenSim = tokenSimilarity(
+      "Redemption Shawshank",
+      "The Shawshank Redemption",
+    );
+    const fullSim = similarity(
+      "Redemption Shawshank",
+      "The Shawshank Redemption",
+    );
+    expect(tokenSim).toBe(1); // Perfect per-word match
+    expect(fullSim).toBeLessThan(0.5); // Full-string is terrible with transpositions
+  });
+
+  it("returns 0 for completely different strings", () => {
+    const sim = tokenSimilarity("Matrix", "Godfather");
+    expect(sim).toBeLessThan(0.5);
+  });
+
+  it("returns 0 for empty strings", () => {
+    expect(tokenSimilarity("", "Matrix")).toBe(0);
+    expect(tokenSimilarity("Matrix", "")).toBe(0);
+  });
+
+  it("handles subset queries (query words found in title)", () => {
+    // "Inception" vs "Inception: The IMAX Experience"
+    const sim = tokenSimilarity("Inception", "Inception: The IMAX Experience");
+    expect(sim).toBe(1); // Single query word perfectly matches one title word
+  });
+});
+
 describe("phoneticMatch", () => {
   it("returns true for phonetically similar titles", () => {
     expect(phoneticMatch("Godfather", "Godfahter")).toBe(true);
@@ -305,6 +354,55 @@ describe("rankResults", () => {
     expect(ranked[2].id).toBe(1); // 1984 should be last
   });
 
+  it("ranks close typos like 'Eight Grade' → 'Eighth Grade' highly", () => {
+    const results: SearchResult[] = [
+      {
+        id: 1,
+        title: "Eighth Grade",
+        release_date: "2018-07-13",
+        popularity: 30,
+        vote_count: 1500,
+      },
+      {
+        id: 2,
+        title: "Eight Men Out",
+        release_date: "1988-09-02",
+        popularity: 15,
+        vote_count: 200,
+      },
+      {
+        id: 3,
+        title: "Eight Below",
+        release_date: "2006-02-17",
+        popularity: 20,
+        vote_count: 800,
+      },
+    ];
+    const ranked = rankResults(results, "Eight Grade", null);
+    expect(ranked[0].id).toBe(1); // "Eighth Grade" should win via token matching
+  });
+
+  it("handles word transpositions via token-level matching", () => {
+    const results: SearchResult[] = [
+      {
+        id: 1,
+        title: "The Dark Knight",
+        release_date: "2008-07-18",
+        popularity: 100,
+        vote_count: 30000,
+      },
+      {
+        id: 2,
+        title: "A Knight's Tale",
+        release_date: "2001-05-11",
+        popularity: 30,
+        vote_count: 2000,
+      },
+    ];
+    const ranked = rankResults(results, "Knight Dark", null);
+    expect(ranked[0].id).toBe(1); // Token matching: both words match perfectly despite transposition
+  });
+
   it("ranks sequels/prequels when query is prefix of title", () => {
     const results: SearchResult[] = [
       {
@@ -360,6 +458,21 @@ describe("generateVariants", () => {
 
   it("removes hyphens without space", () => {
     expect(generateVariants("Spider-Man")).toContain("SpiderMan");
+  });
+
+  it("swaps cardinal to ordinal numbers", () => {
+    expect(generateVariants("Eight Grade")).toContain("Eighth Grade");
+    expect(generateVariants("Five Nights")).toContain("Fifth Nights");
+  });
+
+  it("swaps ordinal to cardinal numbers", () => {
+    expect(generateVariants("Third Man")).toContain("Three Man");
+    expect(generateVariants("Thirteenth Floor")).toContain("Thirteen Floor");
+  });
+
+  it("preserves casing when swapping numbers", () => {
+    expect(generateVariants("eight grade")).toContain("eighth grade");
+    expect(generateVariants("Eight Grade")).toContain("Eighth Grade");
   });
 
   it("returns empty array when no variants apply", () => {

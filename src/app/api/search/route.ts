@@ -1,24 +1,38 @@
 import { NextResponse } from "next/server";
 import { getApiKeys } from "@/lib/config";
-import {
-  parseQuery,
-  rankResults,
-  generateVariants,
-  type SearchResult,
-} from "@/lib/search-utils";
+import { parseQuery, rankResults, generateVariants } from "@/lib/search-utils";
 import { fetchJson, isAbortError } from "@/lib/http";
 import { log } from "@/lib/logger";
+import { LRUCache } from "@/lib/cache";
+import { kvSearchGet, kvSearchSet } from "@/lib/kv";
+
+/** TMDB result with poster_path preserved for response mapping */
+type CachedMovie = {
+  id: number;
+  title: string;
+  release_date?: string;
+  popularity?: number;
+  vote_count?: number;
+  poster_path?: string;
+};
+
+/** In-memory search results cache — 2 min TTL, 500 entries */
+const searchCache = new LRUCache<CachedMovie[]>(2 * 60 * 1000, 500);
 
 type TMDBSearchResult = {
-  results: Array<{
-    id: number;
-    title: string;
-    release_date?: string;
-    poster_path?: string;
-    popularity?: number;
-    vote_count?: number;
-  }>;
+  results: CachedMovie[];
 };
+
+function toResponse(movie: CachedMovie) {
+  return {
+    id: movie.id,
+    title: movie.title,
+    year: movie.release_date?.split("-")[0] || null,
+    poster: movie.poster_path
+      ? `https://image.tmdb.org/t/p/w92${movie.poster_path}`
+      : null,
+  };
+}
 
 async function fetchTMDB(
   tmdbKey: string,
@@ -57,7 +71,24 @@ export async function GET(request: Request) {
   try {
     // Parse query to extract year
     const { title: searchTitle, year } = parseQuery(query);
+    const cacheKey = `${searchTitle.toLowerCase()}|${year ?? ""}`;
 
+    // L1: in-memory cache (same instance)
+    const l1 = searchCache.get(cacheKey);
+    if (l1) {
+      const ranked = rankResults(l1, searchTitle, year, 10);
+      return NextResponse.json({ results: ranked.map(toResponse) });
+    }
+
+    // L2: KV cache (shared across all instances/users)
+    const l2 = await kvSearchGet<CachedMovie>(searchTitle, year);
+    if (l2) {
+      searchCache.set(cacheKey, l2);
+      const ranked = rankResults(l2, searchTitle, year, 10);
+      return NextResponse.json({ results: ranked.map(toResponse) });
+    }
+
+    // L3: fetch from TMDB
     // Generate query variants (e.g., & ↔ and, remove apostrophes, hyphens)
     const variants = generateVariants(searchTitle);
     const allQueries = [searchTitle, ...variants];
@@ -76,40 +107,21 @@ export async function GET(request: Request) {
       combinedResults = noYearResults.flatMap((r) => r.results);
     }
 
-    // Dedupe by movie ID into an index Map for O(1) lookups
-    const movieIndex = new Map<number, (typeof combinedResults)[0]>();
+    // Dedupe by movie ID
+    const movieIndex = new Map<number, CachedMovie>();
     for (const movie of combinedResults) {
       if (!movieIndex.has(movie.id)) movieIndex.set(movie.id, movie);
     }
+    const deduped = Array.from(movieIndex.values());
 
-    // Convert to SearchResult format for ranking
-    const searchResults: SearchResult[] = Array.from(movieIndex.values()).map(
-      (movie) => ({
-        id: movie.id,
-        title: movie.title,
-        release_date: movie.release_date,
-        popularity: movie.popularity,
-        vote_count: movie.vote_count,
-      }),
-    );
+    // Write-through: L1 + L2
+    searchCache.set(cacheKey, deduped);
+    kvSearchSet(searchTitle, year, deduped).catch(() => {});
 
     // Re-rank results using smart ranking (top-K selection for k=10)
-    const ranked = rankResults(searchResults, searchTitle, year, 10);
+    const ranked = rankResults(deduped, searchTitle, year, 10);
 
-    // Map to response format (O(1) lookup via movieIndex)
-    const results = ranked.map((movie) => {
-      const original = movieIndex.get(movie.id)!;
-      return {
-        id: movie.id,
-        title: movie.title,
-        year: movie.release_date?.split("-")[0] || null,
-        poster: original.poster_path
-          ? `https://image.tmdb.org/t/p/w92${original.poster_path}`
-          : null,
-      };
-    });
-
-    return NextResponse.json({ results });
+    return NextResponse.json({ results: ranked.map(toResponse) });
   } catch (err) {
     if (isAbortError(err)) {
       return new Response(null, { status: 499 });

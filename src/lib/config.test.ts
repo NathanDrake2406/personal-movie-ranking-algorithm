@@ -26,4 +26,22 @@ describe("getApiKeys", () => {
     const keys = getApiKeys({ OMDB_API_KEY: "test-omdb" });
     expect(keys.omdbKey).toBe("test-omdb");
   });
+
+  it("parses comma-separated TMDB keys into tmdbKeys array", () => {
+    const keys = getApiKeys({ TMDB_API_KEY: "key1, key2" });
+    expect(keys.tmdbKeys).toEqual(["key1", "key2"]);
+    expect(keys.tmdbKey).toBe("key1");
+  });
+
+  it("returns single-element tmdbKeys for a single key", () => {
+    const keys = getApiKeys({ TMDB_API_KEY: "only-key" });
+    expect(keys.tmdbKeys).toEqual(["only-key"]);
+    expect(keys.tmdbKey).toBe("only-key");
+  });
+
+  it("returns empty tmdbKeys when not in env", () => {
+    const keys = getApiKeys({});
+    expect(keys.tmdbKeys).toEqual([]);
+    expect(keys.tmdbKey).toBeUndefined();
+  });
 });

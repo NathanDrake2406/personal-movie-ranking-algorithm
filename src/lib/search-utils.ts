@@ -115,6 +115,13 @@ export function phoneticKey(str: string): string {
 }
 
 /**
+ * Split a normalized string into word tokens.
+ */
+function tokenize(normalized: string): string[] {
+  return normalized.split(/\s+/).filter(Boolean);
+}
+
+/**
  * Calculate similarity between query and title (0-1 scale)
  * Uses Levenshtein distance normalized by max length
  */
@@ -139,6 +146,46 @@ function similarityNormalized(normQuery: string, normTitle: string): number {
 }
 
 /**
+ * Token-level similarity on pre-normalized strings.
+ * For each query word, finds the best-matching title word (by Levenshtein).
+ * Averages the per-token best matches. Handles word transpositions naturally:
+ * "knight dark" vs "dark knight" → each word matches perfectly → 1.0
+ */
+function tokenSimilarityNormalized(
+  normQuery: string,
+  normTitle: string,
+): number {
+  const queryTokens = tokenize(normQuery);
+  const titleTokens = tokenize(normTitle);
+
+  if (queryTokens.length === 0 || titleTokens.length === 0) return 0;
+
+  let totalSim = 0;
+  for (const qt of queryTokens) {
+    let bestSim = 0;
+    for (const tt of titleTokens) {
+      const sim = similarityNormalized(qt, tt);
+      if (sim > bestSim) bestSim = sim;
+      if (bestSim === 1) break; // Can't do better
+    }
+    totalSim += bestSim;
+  }
+
+  return totalSim / queryTokens.length;
+}
+
+/**
+ * Token-level similarity between query and title (0-1 scale).
+ * Matches individual words, so word order doesn't matter.
+ */
+export function tokenSimilarity(query: string, title: string): number {
+  return tokenSimilarityNormalized(
+    normalizeTitle(query),
+    normalizeTitle(title),
+  );
+}
+
+/**
  * Check if two strings are phonetically similar (typo tolerance)
  */
 export function phoneticMatch(a: string, b: string): boolean {
@@ -153,7 +200,9 @@ const WEIGHTS = {
   NEAR_EXACT_BONUS: 10, // Bonus for >0.9 similarity
   PREFIX_MATCH_BONUS: 20, // Bonus when query is prefix of title (franchise/sequels)
   YEAR_MATCH_BONUS: 10, // Bonus for matching requested year
-  PHONETIC_BONUS: 8, // Bonus for phonetic match
+  PHONETIC_BONUS: 8, // Bonus for phonetic match (full-string)
+  TOKEN_SIMILARITY: 0.15, // 15% for token-level similarity (word transpositions)
+  TOKEN_PHONETIC_BONUS: 6, // Max bonus for per-token phonetic matches
   RECENCY_BONUS: 5, // Max bonus for recent movies (decays over 20 years)
   POPULARITY_WEIGHT: 0.25, // 25% for popularity
   VOTE_COUNT_MAX: 52, // Max bonus for high vote counts (log-scaled)
@@ -190,6 +239,8 @@ function getRecencyBonus(releaseDate: string | undefined): number {
 type PrecomputedQuery = {
   normQuery: string;
   queryPhonetic: string;
+  queryTokens: string[];
+  queryTokenPhonetics: string[];
 };
 
 /**
@@ -219,10 +270,27 @@ function calculateScore(
     score += WEIGHTS.PREFIX_MATCH_BONUS;
   }
 
-  // Phonetic match bonus (helps with typos)
+  // Phonetic match bonus (helps with typos — full-string)
   const titlePhonetic = phoneticKey(result.title);
   if (precomputed.queryPhonetic === titlePhonetic) {
     score += WEIGHTS.PHONETIC_BONUS;
+  }
+
+  // Token-level similarity (handles word transpositions and per-word matching)
+  const tokenSim = tokenSimilarityNormalized(precomputed.normQuery, normTitle);
+  score += tokenSim * 100 * WEIGHTS.TOKEN_SIMILARITY;
+
+  // Token-level phonetic matching (per-word typo tolerance)
+  if (precomputed.queryTokens.length > 0) {
+    const titleTokens = tokenize(normTitle);
+    const titleTokenPhonetics = titleTokens.map((t) => phoneticKey(t));
+
+    let matched = 0;
+    for (const qp of precomputed.queryTokenPhonetics) {
+      if (titleTokenPhonetics.includes(qp)) matched++;
+    }
+    score +=
+      (matched / precomputed.queryTokens.length) * WEIGHTS.TOKEN_PHONETIC_BONUS;
   }
 
   // Year match bonus (when user specifies a year)
@@ -269,9 +337,13 @@ export function rankResults(
   if (results.length === 0) return [];
 
   // Precompute query values once instead of per-candidate
+  const normQuery = normalizeTitle(queryTitle);
+  const queryTokens = tokenize(normQuery);
   const precomputed: PrecomputedQuery = {
-    normQuery: normalizeTitle(queryTitle),
+    normQuery,
     queryPhonetic: phoneticKey(queryTitle),
+    queryTokens,
+    queryTokenPhonetics: queryTokens.map((t) => phoneticKey(t)),
   };
 
   // Find max popularity for normalization
@@ -345,6 +417,39 @@ function topK<T extends { score: number }>(items: T[], k: number): T[] {
 }
 
 /**
+ * Cardinal ↔ ordinal number swaps.
+ * Handles "Eight Grade" → "Eighth Grade", "Third Man" → "Three Man", etc.
+ */
+const NUMBER_VARIANTS: ReadonlyMap<string, string> = new Map([
+  ["one", "first"],
+  ["first", "one"],
+  ["two", "second"],
+  ["second", "two"],
+  ["three", "third"],
+  ["third", "three"],
+  ["four", "fourth"],
+  ["fourth", "four"],
+  ["five", "fifth"],
+  ["fifth", "five"],
+  ["six", "sixth"],
+  ["sixth", "six"],
+  ["seven", "seventh"],
+  ["seventh", "seven"],
+  ["eight", "eighth"],
+  ["eighth", "eight"],
+  ["nine", "ninth"],
+  ["ninth", "nine"],
+  ["ten", "tenth"],
+  ["tenth", "ten"],
+  ["eleven", "eleventh"],
+  ["eleventh", "eleven"],
+  ["twelve", "twelfth"],
+  ["twelfth", "twelve"],
+  ["thirteen", "thirteenth"],
+  ["thirteenth", "thirteen"],
+]);
+
+/**
  * Generate query variants for fallback search when TMDB returns empty.
  * Handles common substitutions that TMDB may not fuzzy-match.
  */
@@ -369,6 +474,21 @@ export function generateVariants(query: string): string[] {
   if (trimmed.includes("-")) {
     variants.add(trimmed.replace(/-/g, " "));
     variants.add(trimmed.replace(/-/g, ""));
+  }
+
+  // Cardinal ↔ ordinal number swaps (e.g., "Eight Grade" → "Eighth Grade")
+  const words = trimmed.split(/\s+/);
+  for (let i = 0; i < words.length; i++) {
+    const replacement = NUMBER_VARIANTS.get(words[i].toLowerCase());
+    if (replacement) {
+      const swapped = [...words];
+      // Preserve original casing style (capitalized vs lowercase)
+      swapped[i] =
+        words[i][0] === words[i][0].toUpperCase()
+          ? replacement[0].toUpperCase() + replacement.slice(1)
+          : replacement;
+      variants.add(swapped.join(" "));
+    }
   }
 
   // Remove original query and empty strings

@@ -112,6 +112,54 @@ export async function kvSet(
   }
 }
 
+// ─── Search cache (shared across instances via KV) ──────────────────────────
+
+const SEARCH_TTL_SEC = 24 * 60 * 60; // 24 hours — TMDB results don't change fast
+
+function searchKey(query: string, year: number | null): string {
+  return `search:${query.toLowerCase()}|${year ?? ""}`;
+}
+
+export async function kvSearchGet<T>(
+  query: string,
+  year: number | null,
+): Promise<T[] | null> {
+  try {
+    const client = getRedisClient();
+    if (!client) return null;
+    const data = await client.get<T[]>(searchKey(query, year));
+    if (data) {
+      log.info("kv_search_hit", { query });
+      return data;
+    }
+    return null;
+  } catch (err) {
+    log.warn("kv_search_get_failed", {
+      query,
+      error: (err as Error).message,
+    });
+    return null;
+  }
+}
+
+export async function kvSearchSet<T>(
+  query: string,
+  year: number | null,
+  results: T[],
+): Promise<void> {
+  try {
+    const client = getRedisClient();
+    if (!client) return;
+    await client.set(searchKey(query, year), results, { ex: SEARCH_TTL_SEC });
+    log.info("kv_search_set", { query, count: results.length });
+  } catch (err) {
+    log.warn("kv_search_set_failed", {
+      query,
+      error: (err as Error).message,
+    });
+  }
+}
+
 export function _resetKvClient(): void {
   redisClient = undefined;
 }
