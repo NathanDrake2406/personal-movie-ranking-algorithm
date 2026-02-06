@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, memo, useReducer } from 'react';
+import { useState, useRef, memo, useReducer, useMemo, useCallback } from 'react';
 import styles from './page.module.css';
 import { Poster } from './Poster';
 import { SearchCombobox } from './SearchCombobox';
@@ -282,41 +282,40 @@ export default function Home() {
     dispatch({ type: 'RESET' });
   };
 
-  // Separate RT and AlloCiné scores from others (they get combined cards)
-  const rtScores = data?.sources.filter((s) => s.source.startsWith('rotten_tomatoes')) ?? [];
-  const allocineScores = data?.sources.filter((s) => s.source.startsWith('allocine_')) ?? [];
-  const otherScores = data?.sources.filter((s) =>
-    !s.source.startsWith('rotten_tomatoes') && !s.source.startsWith('allocine_')
-  ) ?? [];
-  const rtMain = rtScores.find((s) => s.source === 'rotten_tomatoes');
-  const rtAudience = rtScores.find((s) => s.source === 'rotten_tomatoes_audience');
-  const rtAll = rtScores.find((s) => s.source === 'rotten_tomatoes_all');
-  const rtTop = rtScores.find((s) => s.source === 'rotten_tomatoes_top');
-  const allocinePress = allocineScores.find((s) => s.source === 'allocine_press');
-  const allocineUser = allocineScores.find((s) => s.source === 'allocine_user');
+  const { rtMain, rtAudience, rtAll, rtTop, allocinePress, allocineUser, cardDefs } = useMemo(() => {
+    const rtScores = data?.sources.filter((s) => s.source.startsWith('rotten_tomatoes')) ?? [];
+    const allocineScores = data?.sources.filter((s) => s.source.startsWith('allocine_')) ?? [];
+    const otherScores = data?.sources.filter((s) =>
+      !s.source.startsWith('rotten_tomatoes') && !s.source.startsWith('allocine_')
+    ) ?? [];
+    const rtMain = rtScores.find((s) => s.source === 'rotten_tomatoes');
+    const rtAudience = rtScores.find((s) => s.source === 'rotten_tomatoes_audience');
+    const rtAll = rtScores.find((s) => s.source === 'rotten_tomatoes_all');
+    const rtTop = rtScores.find((s) => s.source === 'rotten_tomatoes_top');
+    const allocinePress = allocineScores.find((s) => s.source === 'allocine_press');
+    const allocineUser = allocineScores.find((s) => s.source === 'allocine_user');
 
-  // Build a unified, alphabetically-sorted array of card definitions
-  type CardDef =
-    | { type: 'individual'; sortKey: string; score: SourceScore }
-    | { type: 'rt'; sortKey: string }
-    | { type: 'allocine'; sortKey: string };
+    type CardDef =
+      | { type: 'individual'; sortKey: string; score: SourceScore }
+      | { type: 'rt'; sortKey: string }
+      | { type: 'allocine'; sortKey: string };
 
-  const cardDefs: CardDef[] = [
-    // Individual score cards
-    ...otherScores.map((s): CardDef => ({
-      type: 'individual',
-      sortKey: s.label.toLowerCase(),
-      score: s,
-    })),
-    // Combined RT card (if any RT scores exist)
-    ...(rtScores.length > 0
-      ? [{ type: 'rt' as const, sortKey: 'rotten tomatoes' }]
-      : []),
-    // Combined AlloCiné card (if any AlloCiné scores exist)
-    ...(allocineScores.length > 0
-      ? [{ type: 'allocine' as const, sortKey: 'allocine' }]
-      : []),
-  ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    const cardDefs: CardDef[] = [
+      ...otherScores.map((s): CardDef => ({
+        type: 'individual',
+        sortKey: s.label.toLowerCase(),
+        score: s,
+      })),
+      ...(rtScores.length > 0
+        ? [{ type: 'rt' as const, sortKey: 'rotten tomatoes' }]
+        : []),
+      ...(allocineScores.length > 0
+        ? [{ type: 'allocine' as const, sortKey: 'allocine' }]
+        : []),
+    ].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+    return { rtMain, rtAudience, rtAll, rtTop, allocinePress, allocineUser, cardDefs };
+  }, [data]);
 
   return (
     <div className={styles.page}>
