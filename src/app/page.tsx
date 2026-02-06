@@ -339,7 +339,7 @@ export default function Home() {
         {error ? (
           <div className={styles.errorWrapper}>
             <div className={styles.error}>{error}</div>
-            {lastTmdbId && (
+            {lastTmdbId != null && (
               <button
                 type="button"
                 className={styles.retryBtn}
