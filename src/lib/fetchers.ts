@@ -763,7 +763,9 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
 
   // Write-through to KV (fire-and-forget)
   if (ctx.kvSet) {
-    ctx.kvSet(cacheKey, payload, ctx.movie.year).catch(() => {});
+    ctx.kvSet(cacheKey, payload, ctx.movie.year).catch((err) => {
+      log.warn('kv_writeback_failed', { imdbId: cacheKey, error: (err as Error).message });
+    });
   }
 
   return payload;

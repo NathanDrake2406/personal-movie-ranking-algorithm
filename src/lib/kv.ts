@@ -50,6 +50,11 @@ function getRedisClient(): Redis | null {
 
 // ─── Public API (gracefully degrading) ───────────────────────────────────────
 
+// Bump when ScorePayload shape changes to auto-invalidate stale cache entries
+const KV_SCHEMA_VERSION = 1;
+
+type CachedPayload = ScorePayload & { _v: number };
+
 function kvKey(imdbId: string): string {
   return `score:${imdbId}`;
 }
@@ -58,9 +63,12 @@ export async function kvGet(imdbId: string): Promise<ScorePayload | null> {
   try {
     const client = getRedisClient();
     if (!client) return null;
-    const data = await client.get<ScorePayload>(kvKey(imdbId));
-    if (data) log.info('kv_hit', { imdbId });
-    return data;
+    const data = await client.get<CachedPayload>(kvKey(imdbId));
+    if (data && data._v === KV_SCHEMA_VERSION) {
+      log.info('kv_hit', { imdbId });
+      return data;
+    }
+    return null;
   } catch (err) {
     log.warn('kv_get_failed', { imdbId, error: (err as Error).message });
     return null;
@@ -77,7 +85,8 @@ export async function kvSet(
     if (ttl === null) return;
     const client = getRedisClient();
     if (!client) return;
-    await client.set(kvKey(imdbId), payload, { ex: ttl });
+    const cached: CachedPayload = { ...payload, _v: KV_SCHEMA_VERSION };
+    await client.set(kvKey(imdbId), cached, { ex: ttl });
     log.info('kv_set', { imdbId, ttlSec: ttl });
   } catch (err) {
     log.warn('kv_set_failed', { imdbId, error: (err as Error).message });

@@ -62,15 +62,20 @@ describe('kvGet', () => {
   });
 
   it('returns cached payload on KV hit', async () => {
-    mockGet.mockResolvedValue(samplePayload);
+    mockGet.mockResolvedValue({ ...samplePayload, _v: 1 });
     const result = await kvGet('tt0111161');
-    expect(result).toEqual(samplePayload);
+    expect(result).toEqual({ ...samplePayload, _v: 1 });
     expect(mockGet).toHaveBeenCalledWith('score:tt0111161');
   });
 
   it('returns null on KV miss', async () => {
     mockGet.mockResolvedValue(null);
     expect(await kvGet('tt9999999')).toBeNull();
+  });
+
+  it('returns null for stale schema version', async () => {
+    mockGet.mockResolvedValue({ ...samplePayload, _v: 0 });
+    expect(await kvGet('tt0111161')).toBeNull();
   });
 
   it('returns null when env vars are missing', async () => {
@@ -102,13 +107,13 @@ describe('kvSet', () => {
   it('writes with 30-day TTL for old films', async () => {
     mockSet.mockResolvedValue(undefined);
     await kvSet('tt0111161', samplePayload, '1994');
-    expect(mockSet).toHaveBeenCalledWith('score:tt0111161', samplePayload, { ex: 30 * 86400 });
+    expect(mockSet).toHaveBeenCalledWith('score:tt0111161', { ...samplePayload, _v: 1 }, { ex: 30 * 86400 });
   });
 
   it('writes with 7-day TTL for mid-age films', async () => {
     mockSet.mockResolvedValue(undefined);
     await kvSet('tt1234567', samplePayload, '2020');
-    expect(mockSet).toHaveBeenCalledWith('score:tt1234567', samplePayload, { ex: 7 * 86400 });
+    expect(mockSet).toHaveBeenCalledWith('score:tt1234567', { ...samplePayload, _v: 1 }, { ex: 7 * 86400 });
   });
 
   it('skips write for recent films', async () => {
