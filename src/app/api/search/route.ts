@@ -78,11 +78,11 @@ export async function GET(request: Request) {
       vote_count: movie.vote_count,
     }));
 
-    // Re-rank results using smart ranking
-    const ranked = rankResults(searchResults, searchTitle, year);
+    // Re-rank results using smart ranking (top-K selection for k=10)
+    const ranked = rankResults(searchResults, searchTitle, year, 10);
 
     // Map to response format (O(1) lookup via movieIndex)
-    const results = ranked.slice(0, 10).map((movie) => {
+    const results = ranked.map((movie) => {
       const original = movieIndex.get(movie.id)!;
       return {
         id: movie.id,

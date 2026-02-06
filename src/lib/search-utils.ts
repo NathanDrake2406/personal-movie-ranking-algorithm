@@ -122,6 +122,13 @@ export function similarity(query: string, title: string): number {
   const normQuery = normalizeTitle(query);
   const normTitle = normalizeTitle(title);
 
+  return similarityNormalized(normQuery, normTitle);
+}
+
+/**
+ * Similarity on pre-normalized strings (avoids redundant normalizeTitle calls)
+ */
+function similarityNormalized(normQuery: string, normTitle: string): number {
   if (normQuery === normTitle) return 1;
   if (normQuery.length === 0 || normTitle.length === 0) return 0;
 
@@ -161,6 +168,10 @@ const RECENCY_DECAY_YEARS = 20; // Full bonus for current year, decays to 0 over
 function isPrefixMatch(query: string, title: string): boolean {
   const normQuery = normalizeTitle(query);
   const normTitle = normalizeTitle(title);
+  return isPrefixMatchNormalized(normQuery, normTitle);
+}
+
+function isPrefixMatchNormalized(normQuery: string, normTitle: string): boolean {
   return normTitle.startsWith(normQuery) && normTitle.length > normQuery.length;
 }
 
@@ -181,19 +192,27 @@ function getRecencyBonus(releaseDate: string | undefined): number {
   return WEIGHTS.RECENCY_BONUS * (1 - yearsAgo / RECENCY_DECAY_YEARS);
 }
 
+/** Precomputed query values to avoid redundant normalization per candidate */
+type PrecomputedQuery = {
+  normQuery: string;
+  queryPhonetic: string;
+};
+
 /**
  * Calculate ranking score for a single result
  */
 function calculateScore(
   result: SearchResult,
-  queryTitle: string,
+  precomputed: PrecomputedQuery,
   queryYear: number | null,
   maxPopularity: number,
 ): number {
   let score = 0;
 
+  const normTitle = normalizeTitle(result.title);
+
   // Title similarity (0-40 points base)
-  const sim = similarity(queryTitle, result.title);
+  const sim = similarityNormalized(precomputed.normQuery, normTitle);
   score += sim * 100 * WEIGHTS.SIMILARITY_BASE;
 
   // Near-exact match bonus
@@ -202,12 +221,13 @@ function calculateScore(
   }
 
   // Prefix match bonus (query "Dune" matches "Dune: Part Two")
-  if (isPrefixMatch(queryTitle, result.title)) {
+  if (isPrefixMatchNormalized(precomputed.normQuery, normTitle)) {
     score += WEIGHTS.PREFIX_MATCH_BONUS;
   }
 
   // Phonetic match bonus (helps with typos)
-  if (phoneticMatch(queryTitle, result.title)) {
+  const titlePhonetic = phoneticKey(result.title);
+  if (precomputed.queryPhonetic === titlePhonetic) {
     score += WEIGHTS.PHONETIC_BONUS;
   }
 
@@ -241,27 +261,87 @@ function calculateScore(
 }
 
 /**
- * Re-rank TMDB results based on similarity, year match, and popularity
+ * Re-rank TMDB results based on similarity, year match, and popularity.
+ * When limit is specified, uses a min-heap for O(n log k) top-K selection
+ * instead of a full O(n log n) sort.
  */
 export function rankResults(
   results: SearchResult[],
   queryTitle: string,
   queryYear: number | null,
+  limit?: number,
 ): SearchResult[] {
   if (results.length === 0) return [];
+
+  // Precompute query values once instead of per-candidate
+  const precomputed: PrecomputedQuery = {
+    normQuery: normalizeTitle(queryTitle),
+    queryPhonetic: phoneticKey(queryTitle),
+  };
 
   // Find max popularity for normalization
   const maxPopularity = Math.max(...results.map((r) => r.popularity ?? 0), 1);
 
-  // Calculate scores and sort
   const scored = results.map((result) => ({
     result,
-    score: calculateScore(result, queryTitle, queryYear, maxPopularity),
+    score: calculateScore(result, precomputed, queryYear, maxPopularity),
   }));
 
-  scored.sort((a, b) => b.score - a.score);
+  // Use top-K selection when limit is set and smaller than the full array
+  if (limit != null && limit < scored.length) {
+    return topK(scored, limit).map((s) => s.result);
+  }
 
+  scored.sort((a, b) => b.score - a.score);
   return scored.map((s) => s.result);
+}
+
+/**
+ * Min-heap based top-K selection — O(n log k) instead of O(n log n) full sort.
+ * Returns the top k items sorted descending by score.
+ */
+function topK<T extends { score: number }>(items: T[], k: number): T[] {
+  // Min-heap: root is the smallest score in the current top-k
+  const heap: T[] = [];
+
+  const swap = (i: number, j: number) => { const t = heap[i]; heap[i] = heap[j]; heap[j] = t; };
+
+  const siftUp = (i: number) => {
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (heap[parent].score <= heap[i].score) break;
+      swap(parent, i);
+      i = parent;
+    }
+  };
+
+  const siftDown = (i: number) => {
+    const n = heap.length;
+    while (true) {
+      let smallest = i;
+      const left = 2 * i + 1;
+      const right = 2 * i + 2;
+      if (left < n && heap[left].score < heap[smallest].score) smallest = left;
+      if (right < n && heap[right].score < heap[smallest].score) smallest = right;
+      if (smallest === i) break;
+      swap(i, smallest);
+      i = smallest;
+    }
+  };
+
+  for (const item of items) {
+    if (heap.length < k) {
+      heap.push(item);
+      siftUp(heap.length - 1);
+    } else if (item.score > heap[0].score) {
+      heap[0] = item;
+      siftDown(0);
+    }
+  }
+
+  // Sort the k winners descending
+  heap.sort((a, b) => b.score - a.score);
+  return heap;
 }
 
 /**

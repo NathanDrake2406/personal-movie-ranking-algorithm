@@ -688,7 +688,7 @@ export default function Home() {
               ) : (
                 <div className={styles.posterPlaceholder}>No poster</div>
               )}
-              {(data.movie.directors?.length || data.movie.director || data.movie.writers?.length || data.movie.cinematographer || data.movie.composer || data.movie.cast?.length) && (
+              {!!(data.movie.directors?.length || data.movie.director || data.movie.writers?.length || data.movie.cinematographer || data.movie.composer || data.movie.cast?.length) && (
                 <div className={styles.posterCredits}>
                   {(data.movie.directors?.length || data.movie.director) ? (
                     <p className={styles.creditLine}>

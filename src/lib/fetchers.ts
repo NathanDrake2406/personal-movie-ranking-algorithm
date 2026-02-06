@@ -718,12 +718,11 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
     doubanScore,
   ];
 
-  const flattened = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
-  const normalized = flattened.map(normalizeScore);
+  const allScores = results.flatMap((r) => (Array.isArray(r) ? r : [r]));
 
-  const overall = computeOverallScore(normalized);
+  const overall = computeOverallScore(allScores);
 
-  for (const s of normalized) {
+  for (const s of allScores) {
     log.info('source_fetched', {
       imdbId: ctx.movie.imdbId,
       source: s.source,
@@ -734,15 +733,15 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   log.info('scores_computed', {
     imdbId: ctx.movie.imdbId,
     durationMs: Date.now() - startMs,
-    sourcesAvailable: normalized.filter((s) => s.normalized != null).length,
+    sourcesAvailable: allScores.filter((s) => s.normalized != null).length,
     overallScore: overall?.score ?? null,
   });
 
-  const missingSources = normalized.filter((s) => s.normalized == null).map((s) => s.label);
+  const missingSources = allScores.filter((s) => s.normalized == null).map((s) => s.label);
 
   const payload: ScorePayload = {
     movie: ctx.movie,
-    sources: normalized,
+    sources: allScores,
     overall,
     missingSources,
     themes: imdbResult.themes.length > 0 ? imdbResult.themes : undefined,

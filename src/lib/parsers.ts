@@ -190,10 +190,11 @@ function buildThemeIdMap(data: unknown): Map<string, string> {
   if (!data || typeof data !== 'object') return map;
 
   const queue: unknown[] = [data];
+  let head = 0;
   let inspected = 0;
 
-  while (queue.length > 0 && inspected < 5000) {
-    const current = queue.shift();
+  while (head < queue.length && inspected < 5000) {
+    const current = queue[head++];
     inspected += 1;
     if (!current || typeof current !== 'object') continue;
 
@@ -235,10 +236,11 @@ function parseImdbThemesFromNextData(data: unknown): ImdbTheme[] {
   const results: ImdbTheme[] = [];
   const seen = new Set<string>();
   const queue: unknown[] = [data];
+  let head = 0;
   let inspected = 0;
 
-  while (queue.length > 0 && inspected < 5000) {
-    const current = queue.shift();
+  while (head < queue.length && inspected < 5000) {
+    const current = queue[head++];
     inspected += 1;
     if (!current || typeof current !== 'object') continue;
 
@@ -357,9 +359,10 @@ export function parseImdbThemeSummaryResponse(data: unknown, themeId: string): s
   };
 
   const queue: unknown[] = [data];
+  let head = 0;
   let inspected = 0;
-  while (queue.length > 0 && inspected < 5000) {
-    const current = queue.shift();
+  while (head < queue.length && inspected < 5000) {
+    const current = queue[head++];
     inspected += 1;
     if (!current || typeof current !== 'object') continue;
     const obj = current as Record<string, unknown>;
