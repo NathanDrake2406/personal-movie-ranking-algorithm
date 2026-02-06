@@ -674,18 +674,25 @@ type RunFetchersInput = {
   kvSet?: (imdbId: string, payload: ScorePayload, movieYear: string | undefined) => Promise<void>;
 };
 
-export async function runFetchers(input: RunFetchersInput): Promise<ScorePayload> {
+type FetchersResult = {
+  payload: ScorePayload;
+  deferred: () => void;
+};
+
+const noop = () => {};
+
+export async function runFetchers(input: RunFetchersInput): Promise<FetchersResult> {
   const { movie, env, signal, kvGet: kvGetFn, kvSet: kvSetFn } = input;
   const cacheKey = movie.imdbId;
   const cached = scoreCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) return { payload: cached, deferred: noop };
 
   // Layer 2: KV cache (optional, days-scale TTL)
   if (kvGetFn) {
     const kvCached = await kvGetFn(cacheKey);
     if (kvCached) {
       scoreCache.set(cacheKey, kvCached);
-      return kvCached;
+      return { payload: kvCached, deferred: noop };
     }
   }
 
@@ -754,25 +761,10 @@ export async function runFetchers(input: RunFetchersInput): Promise<ScorePayload
 
   const overall = computeOverallScore(allScores);
 
-  for (const s of allScores) {
-    log.info('source_fetched', {
-      imdbId: ctx.movie.imdbId,
-      source: s.source,
-      hasScore: s.normalized != null,
-      error: s.error,
-    });
-  }
-  log.info('scores_computed', {
-    imdbId: ctx.movie.imdbId,
-    durationMs: Date.now() - startMs,
-    sourcesAvailable: allScores.filter((s) => s.normalized != null).length,
-    overallScore: overall?.score ?? null,
-  });
-
   const missingSources = allScores.filter((s) => s.normalized == null).map((s) => s.label);
 
   const payload: ScorePayload = {
-    movie: ctx.movie,
+    movie,
     sources: allScores,
     overall,
     missingSources,
@@ -782,14 +774,31 @@ export async function runFetchers(input: RunFetchersInput): Promise<ScorePayload
   };
   scoreCache.set(cacheKey, payload);
 
-  // Write-through to KV (fire-and-forget) — only cache when ALL sources succeeded
-  if (kvSetFn && missingSources.length === 0) {
-    kvSetFn(cacheKey, payload, movie.year).catch((err) => {
-      log.warn('kv_writeback_failed', { imdbId: cacheKey, error: (err as Error).message });
+  // Deferred work: logging and KV write-through (run after response is sent)
+  const deferred = () => {
+    for (const s of allScores) {
+      log.info('source_fetched', {
+        imdbId: movie.imdbId,
+        source: s.source,
+        hasScore: s.normalized != null,
+        error: s.error,
+      });
+    }
+    log.info('scores_computed', {
+      imdbId: movie.imdbId,
+      durationMs: Date.now() - startMs,
+      sourcesAvailable: allScores.filter((s) => s.normalized != null).length,
+      overallScore: overall?.score ?? null,
     });
-  }
 
-  return payload;
+    if (kvSetFn && missingSources.length === 0) {
+      kvSetFn(cacheKey, payload, movie.year).catch((err) => {
+        log.warn('kv_writeback_failed', { imdbId: cacheKey, error: (err as Error).message });
+      });
+    }
+  };
+
+  return { payload, deferred };
 }
 
 const scoreCache = new MemoryCache<ScorePayload>(5 * 60 * 1000, 500); // 5 min TTL, 500 max

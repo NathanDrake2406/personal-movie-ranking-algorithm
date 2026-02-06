@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
+vi.mock('next/server', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/server')>();
+  return { ...actual, after: vi.fn() };
+});
+
 vi.mock('@/lib/resolve', () => ({
   resolveByTmdbId: vi.fn(async () => ({
     movie: { imdbId: 'tt123', title: 'Inception', year: '2010', poster: 'p', tmdbId: 42 },
@@ -12,9 +17,12 @@ vi.mock('@/lib/wikidata', () => ({
 
 vi.mock('@/lib/fetchers', () => ({
   runFetchers: vi.fn(async ({ movie }) => ({
-    movie,
-    sources: [{ source: 'imdb', label: 'IMDb', normalized: 84, count: 100000 }],
-    overall: { score: 84, coverage: 0.9, disagreement: 0 },
+    payload: {
+      movie,
+      sources: [{ source: 'imdb', label: 'IMDb', normalized: 84, count: 100000 }],
+      overall: { score: 84, coverage: 0.9, disagreement: 0 },
+    },
+    deferred: () => {},
   })),
 }));
 

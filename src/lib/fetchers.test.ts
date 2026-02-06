@@ -43,7 +43,7 @@ describe('runFetchers', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('returns normalized scores and overall', async () => {
-    const res = await runFetchers(baseCtx);
+    const { payload: res } = await runFetchers(baseCtx);
     // Check individual sources are present and normalized correctly
     const imdb = res.sources.find((s) => s.source === 'imdb');
     expect(imdb?.normalized).toBeCloseTo(88, 0);
@@ -63,7 +63,7 @@ describe('runFetchers', () => {
   });
 
   it('returns other sources when OMDB key is missing', async () => {
-    const res = await runFetchers({
+    const { payload: res } = await runFetchers({
       ...baseCtx,
       movie: { ...baseCtx.movie, imdbId: 'tt2' },
       env: { OMDB_API_KEY: undefined },
@@ -77,7 +77,7 @@ describe('runFetchers', () => {
   });
 
   it('uses OMDb fallbacks when RT/Metacritic slugs missing', async () => {
-    const res = await runFetchers({
+    const { payload: res } = await runFetchers({
       ...baseCtx,
       movie: { ...baseCtx.movie, imdbId: 'tt-fallback' },
       wikidata: { rottenTomatoes: undefined, metacritic: undefined },
@@ -126,7 +126,7 @@ describe('runFetchers', () => {
       return '';
     });
 
-    const res = await runFetchers({
+    const { payload: res } = await runFetchers({
       ...baseCtx,
       movie: { ...baseCtx.movie, imdbId: 'tt-rt-empty' },
     });
@@ -146,7 +146,7 @@ describe('runFetchers', () => {
     const mockKvGet = vi.fn().mockResolvedValue(kvPayload);
     const mockKvSet = vi.fn();
 
-    const res = await runFetchers({
+    const { payload: res } = await runFetchers({
       movie: { imdbId: 'tt-kv', title: 'KV Movie', year: '2010' },
       wikidata: {},
       env: {},
@@ -164,13 +164,15 @@ describe('runFetchers', () => {
     const mockKvSet = vi.fn().mockResolvedValue(undefined);
 
     // No wikidata slugs + no OMDB key = most sources fail
-    const res = await runFetchers({
+    const { payload: res, deferred } = await runFetchers({
       movie: { imdbId: 'tt-degraded', title: 'Degraded Movie', year: '1994' },
       wikidata: {},
       env: {},
       kvGet: mockKvGet,
       kvSet: mockKvSet,
     });
+
+    deferred();
 
     expect(res.missingSources!.length).toBeGreaterThan(0);
     expect(mockKvGet).toHaveBeenCalledWith('tt-degraded');
@@ -181,12 +183,14 @@ describe('runFetchers', () => {
     const mockKvGet = vi.fn().mockResolvedValue(null);
     const mockKvSet = vi.fn().mockResolvedValue(undefined);
 
-    const res = await runFetchers({
+    const { payload: res, deferred } = await runFetchers({
       ...baseCtx,
       movie: { ...baseCtx.movie, imdbId: 'tt-kvmiss', year: '2010' },
       kvGet: mockKvGet,
       kvSet: mockKvSet,
     });
+
+    deferred();
 
     expect(mockKvGet).toHaveBeenCalledWith('tt-kvmiss');
     expect(mockKvSet).toHaveBeenCalledWith('tt-kvmiss', res, '2010');

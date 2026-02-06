@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { fetchWikidataIds } from '@/lib/wikidata';
 import { runFetchers } from '@/lib/fetchers';
 import { resolveByTmdbId } from '@/lib/resolve';
@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     }
 
     const wikidataPromise = fetchWikidataIds(movie.imdbId, request.signal);
-    const payload = await runFetchers({ movie, wikidata: wikidataPromise, env, signal: request.signal, kvGet, kvSet });
+    const { payload, deferred } = await runFetchers({ movie, wikidata: wikidataPromise, env, signal: request.signal, kvGet, kvSet });
+    after(deferred);
 
     return NextResponse.json(payload, { status: 200 });
   } catch (err) {
