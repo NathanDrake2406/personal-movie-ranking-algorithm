@@ -48,16 +48,23 @@ const samplePayload: ScorePayload = {
   overall: { score: 91, coverage: 0.95, disagreement: 3.2 },
 };
 
+function clearRedisEnv() {
+  delete process.env.KV_REST_API_URL;
+  delete process.env.KV_REST_API_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+}
+
 describe('kvGet', () => {
   beforeEach(() => {
     _resetKvClient();
     mockGet.mockReset();
-    process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.io';
-    process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
+    clearRedisEnv();
+    process.env.KV_REST_API_URL = 'https://fake.upstash.io';
+    process.env.KV_REST_API_TOKEN = 'fake-token';
   });
   afterEach(() => {
-    delete process.env.UPSTASH_REDIS_REST_URL;
-    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    clearRedisEnv();
     _resetKvClient();
   });
 
@@ -79,7 +86,7 @@ describe('kvGet', () => {
   });
 
   it('returns null when env vars are missing', async () => {
-    delete process.env.UPSTASH_REDIS_REST_URL;
+    clearRedisEnv();
     _resetKvClient();
     expect(await kvGet('tt0111161')).toBeNull();
     expect(mockGet).not.toHaveBeenCalled();
@@ -89,18 +96,28 @@ describe('kvGet', () => {
     mockGet.mockRejectedValue(new Error('connection refused'));
     expect(await kvGet('tt0111161')).toBeNull();
   });
+
+  it('falls back to UPSTASH_REDIS_REST_* env vars', async () => {
+    clearRedisEnv();
+    _resetKvClient();
+    process.env.UPSTASH_REDIS_REST_URL = 'https://native.upstash.io';
+    process.env.UPSTASH_REDIS_REST_TOKEN = 'native-token';
+    mockGet.mockResolvedValue({ ...samplePayload, _v: 1 });
+    const result = await kvGet('tt0111161');
+    expect(result).toEqual({ ...samplePayload, _v: 1 });
+  });
 });
 
 describe('kvSet', () => {
   beforeEach(() => {
     _resetKvClient();
     mockSet.mockReset();
-    process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.io';
-    process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
+    clearRedisEnv();
+    process.env.KV_REST_API_URL = 'https://fake.upstash.io';
+    process.env.KV_REST_API_TOKEN = 'fake-token';
   });
   afterEach(() => {
-    delete process.env.UPSTASH_REDIS_REST_URL;
-    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    clearRedisEnv();
     _resetKvClient();
   });
 

@@ -28,17 +28,18 @@ let redisClient: Redis | null | undefined; // undefined = not initialized
 function getRedisClient(): Redis | null {
   if (redisClient !== undefined) return redisClient;
 
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-    log.info('kv_disabled', { reason: 'Missing UPSTASH_REDIS env vars' });
+  // Support both Vercel-provisioned (KV_REST_API_*) and native Upstash (UPSTASH_REDIS_REST_*) names
+  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    log.info('kv_disabled', { reason: 'Missing Redis env vars' });
     redisClient = null;
     return null;
   }
 
   try {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
+    redisClient = new Redis({ url, token });
     log.info('kv_enabled');
     return redisClient;
   } catch (err) {
