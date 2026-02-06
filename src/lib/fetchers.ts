@@ -26,6 +26,7 @@ import {
   parseImdbThemes,
   parseImdbSummary,
   parseRTConsensus,
+  parseImdbCriticReviewsHtml,
 } from "./parsers";
 import type { ImdbTheme, RTConsensus } from "./types";
 
@@ -446,63 +447,95 @@ async function scrapeMetacritic(
   }
 }
 
+// Fallback: scrape Metacritic score from IMDb's critic reviews page
+// IMDb embeds the Metascore, review count, and Metacritic URL directly
+async function scrapeMetacriticViaImdb(
+  imdbId: string,
+  signal?: AbortSignal,
+): Promise<{
+  value: number | null;
+  count: number | null;
+  metacriticUrl: string | null;
+} | null> {
+  try {
+    const html = await fetchText(
+      `https://www.imdb.com/title/${imdbId}/criticreviews`,
+      {
+        headers: {
+          "user-agent": BROWSER_UA,
+          "accept-language": "en-US,en;q=0.9",
+        },
+        signal,
+      },
+    );
+    const parsed = parseImdbCriticReviewsHtml(html);
+    if (parsed.value != null) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchMetacritic(
   ctx: FetcherContext,
   fallbackValue?: number | null,
 ): Promise<SourceScore> {
   // Wikidata P1712 may include "movie/" prefix, strip it if present
   const slug = ctx.wikidata.metacritic?.replace(/^movie\//, "");
-  if (!slug) {
-    if (fallbackValue != null) {
+
+  // --- Layer 1: Direct Metacritic scrape (requires slug) ---
+  if (slug) {
+    let result: { value: number | null; count: number | null } | null = null;
+    let usedSlug = slug;
+
+    if (ctx.movie.year) {
+      const slugWithYear = `${slug}-${ctx.movie.year}`;
+      const [canonical, withYear] = await Promise.all([
+        scrapeMetacritic(slug, ctx.signal),
+        scrapeMetacritic(slugWithYear, ctx.signal),
+      ]);
+      if (canonical) {
+        result = canonical;
+      } else if (withYear) {
+        result = withYear;
+        usedSlug = slugWithYear;
+      }
+    } else {
+      result = await scrapeMetacritic(slug, ctx.signal);
+    }
+
+    if (result) {
       return normalizeScore({
         source: "metacritic",
         label: "Metacritic",
         normalized: null,
-        raw: { value: fallbackValue, scale: "0-100" },
-        fromFallback: true,
-        error: undefined,
+        raw: { value: result.value, scale: "0-100" },
+        count: result.count,
+        url: `https://www.metacritic.com/movie/${usedSlug}`,
       });
     }
-    return {
-      source: "metacritic",
-      label: "Metacritic",
-      normalized: null,
-      error: "No Metacritic slug",
-    };
   }
 
-  // Try both slug variants in parallel when year is available
-  let result: { value: number | null; count: number | null } | null = null;
-  let usedSlug = slug;
-
-  if (ctx.movie.year) {
-    const slugWithYear = `${slug}-${ctx.movie.year}`;
-    const [canonical, withYear] = await Promise.all([
-      scrapeMetacritic(slug, ctx.signal),
-      scrapeMetacritic(slugWithYear, ctx.signal),
-    ]);
-    if (canonical) {
-      result = canonical;
-    } else if (withYear) {
-      result = withYear;
-      usedSlug = slugWithYear;
-    }
-  } else {
-    result = await scrapeMetacritic(slug, ctx.signal);
-  }
-
-  if (result) {
+  // --- Layer 2: IMDb critic reviews page (no slug needed, just IMDb ID) ---
+  const imdbResult = await scrapeMetacriticViaImdb(
+    ctx.movie.imdbId,
+    ctx.signal,
+  );
+  if (imdbResult) {
     return normalizeScore({
       source: "metacritic",
       label: "Metacritic",
       normalized: null,
-      raw: { value: result.value, scale: "0-100" },
-      count: result.count,
-      url: `https://www.metacritic.com/movie/${usedSlug}`,
+      raw: { value: imdbResult.value, scale: "0-100" },
+      count: imdbResult.count,
+      url: imdbResult.metacriticUrl ?? undefined,
+      fromFallback: true,
     });
   }
 
-  // Fall back to OMDB value if available
+  // --- Layer 3: OMDB Metascore (requires API key) ---
   if (fallbackValue != null) {
     return normalizeScore({
       source: "metacritic",

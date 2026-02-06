@@ -122,6 +122,56 @@ export function parseMetacriticHtml(html: string): ParsedRating {
   return { value: Number.isFinite(value) ? value : null, count };
 }
 
+/** Parse IMDb's /title/{id}/criticreviews page for embedded Metacritic data */
+export function parseImdbCriticReviewsHtml(html: string): {
+  value: number | null;
+  count: number | null;
+  metacriticUrl: string | null;
+} {
+  let value: number | null = null;
+  let count: number | null = null;
+
+  // Strategy 1: Extract from embedded JSON blob
+  // IMDb embeds Next.js page data containing: "metacritic":{"metascore":{"reviewCount":22,"score":82,...}}
+  const jsonMatch = html.match(
+    /"metascore"\s*:\s*\{\s*"reviewCount"\s*:\s*(\d+)\s*,\s*"score"\s*:\s*(\d+)/,
+  );
+  if (jsonMatch) {
+    count = parseInt(jsonMatch[1], 10);
+    value = parseInt(jsonMatch[2], 10);
+  }
+
+  // Strategy 2: Fallback to HTML elements
+  // <div data-testid="critic-reviews-title" ...><div ...>82</div>...22 reviews...
+  if (value == null) {
+    const htmlMatch = html.match(
+      /data-testid="critic-reviews-title"[^>]*>[\s\S]*?<div[^>]*>(\d{1,3})<\/div>/,
+    );
+    if (htmlMatch?.[1]) {
+      value = parseInt(htmlMatch[1], 10);
+    }
+  }
+  if (count == null) {
+    const countMatch = html.match(/(\d+)\s+reviews?\s*·\s*Provided by/);
+    if (countMatch?.[1]) {
+      count = parseInt(countMatch[1], 10);
+    }
+  }
+
+  // Extract Metacritic URL from any href on the page
+  const urlMatch = html.match(
+    /href="(https?:\/\/www\.metacritic\.com\/movie\/[^"?]+)/,
+  );
+  const metacriticUrl = urlMatch?.[1] ?? null;
+
+  return {
+    value:
+      Number.isFinite(value) && value! >= 0 && value! <= 100 ? value : null,
+    count: Number.isFinite(count) ? count : null,
+    metacriticUrl,
+  };
+}
+
 export function parseDoubanSubjectSearchHtml(html: string): string | null {
   const match = html.match(/subject\/(\d+)/);
   return match?.[1] ?? null;

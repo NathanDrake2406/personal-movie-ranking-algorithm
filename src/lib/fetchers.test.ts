@@ -25,7 +25,11 @@ vi.mock("./http", () => {
   const fetchText = vi.fn(async (url: string) => {
     if (url.includes("letterboxd"))
       return '"ratingValue":4.1,"ratingCount":50000';
-    if (url.includes("metacritic")) return '"ratingValue": 73,"ratingCount":42';
+    if (url.includes("metacritic.com"))
+      return '"ratingValue": 73,"ratingCount":42';
+    // IMDb critic reviews page (Metacritic fallback)
+    if (url.includes("criticreviews"))
+      return '"metascore":{"reviewCount":22,"score":82,"__typename":"Metascore"}';
     // AlloCiné page with press and user ratings
     if (url.includes("allocine.fr"))
       return '<div>Presse</div><span class="stareval-note">3,8</span><span class="stareval-note">4,2</span>';
@@ -91,7 +95,7 @@ describe("runFetchers", () => {
     expect(allocinePress?.normalized).toBeCloseTo(76);
   });
 
-  it("uses OMDb fallbacks when RT/Metacritic slugs missing", async () => {
+  it("uses IMDb critic reviews fallback when Metacritic slug missing", async () => {
     const { payload: res } = await runFetchers({
       ...baseCtx,
       movie: { ...baseCtx.movie, imdbId: "tt-fallback" },
@@ -99,8 +103,11 @@ describe("runFetchers", () => {
     });
     const rt = res.sources.find((s) => s.source === "rotten_tomatoes");
     const mc = res.sources.find((s) => s.source === "metacritic");
+    // RT falls back to OMDB
     expect(rt?.normalized).toBe(86);
-    expect(mc?.normalized).toBe(73);
+    // Metacritic falls back to IMDb critic reviews page (score 82, not OMDB's 73)
+    expect(mc?.normalized).toBe(82);
+    expect(mc?.fromFallback).toBe(true);
   });
 
   it("uses OMDb RT fallback when RT returns 200 but no score data", async () => {

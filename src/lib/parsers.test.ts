@@ -14,6 +14,7 @@ import {
   parseImdbThemes,
   parseImdbThemeSummaryResponse,
   parseRTConsensus,
+  parseImdbCriticReviewsHtml,
 } from "./parsers";
 
 describe("parsers", () => {
@@ -155,6 +156,57 @@ describe("parsers", () => {
       const result = parseMetacriticHtml(html);
       expect(result.value).toBe(90);
       expect(result.count).toBe(50);
+    });
+  });
+
+  describe("parseImdbCriticReviewsHtml", () => {
+    it("extracts score and count from embedded JSON blob", () => {
+      const html =
+        '"metacritic":{"metascore":{"reviewCount":22,"score":82,"__typename":"Metascore"}';
+      const result = parseImdbCriticReviewsHtml(html);
+      expect(result.value).toBe(82);
+      expect(result.count).toBe(22);
+    });
+
+    it("extracts Metacritic URL from href", () => {
+      const html =
+        'href="https://www.metacritic.com/movie/the-shawshank-redemption?ftag=MCD-06-10aaa1c"';
+      const result = parseImdbCriticReviewsHtml(html);
+      expect(result.metacriticUrl).toBe(
+        "https://www.metacritic.com/movie/the-shawshank-redemption",
+      );
+    });
+
+    it("falls back to HTML data-testid extraction", () => {
+      const html =
+        '<div data-testid="critic-reviews-title" class="x"><div class="y">75</div></div>' +
+        "<div>30 reviews · Provided by Metacritic</div>";
+      const result = parseImdbCriticReviewsHtml(html);
+      expect(result.value).toBe(75);
+      expect(result.count).toBe(30);
+    });
+
+    it("prefers JSON blob over HTML when both present", () => {
+      const html =
+        '"metascore":{"reviewCount":22,"score":82}' +
+        '<div data-testid="critic-reviews-title" class="x"><div class="y">99</div></div>';
+      const result = parseImdbCriticReviewsHtml(html);
+      expect(result.value).toBe(82);
+      expect(result.count).toBe(22);
+    });
+
+    it("returns nulls when no Metacritic data found", () => {
+      const html = "<html><body>No critic reviews here</body></html>";
+      const result = parseImdbCriticReviewsHtml(html);
+      expect(result.value).toBeNull();
+      expect(result.count).toBeNull();
+      expect(result.metacriticUrl).toBeNull();
+    });
+
+    it("rejects scores outside 0-100 range", () => {
+      const html = '"metascore":{"reviewCount":5,"score":150}';
+      const result = parseImdbCriticReviewsHtml(html);
+      expect(result.value).toBeNull();
     });
   });
 
