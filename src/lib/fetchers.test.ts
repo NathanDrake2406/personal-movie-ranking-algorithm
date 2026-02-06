@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { ScorePayload } from './types';
 
 vi.mock('./http', () => {
   const fetchJson = vi.fn(async (url: string) => {
@@ -134,5 +135,42 @@ describe('runFetchers', () => {
     const rt = res.sources.find((s) => s.source === 'rotten_tomatoes');
     expect(rt?.normalized).toBe(86);
     expect(rt?.fromFallback).toBe(true);
+  });
+
+  it('uses KV cache on in-memory miss', async () => {
+    const kvPayload: ScorePayload = {
+      movie: { imdbId: 'tt-kv', title: 'KV Movie', year: '2010' },
+      sources: [],
+      overall: { score: 85, coverage: 0.9, disagreement: 2.5 },
+    };
+    const mockKvGet = vi.fn().mockResolvedValue(kvPayload);
+    const mockKvSet = vi.fn();
+
+    const res = await runFetchers({
+      movie: { imdbId: 'tt-kv', title: 'KV Movie', year: '2010' },
+      wikidata: {},
+      env: {},
+      kvGet: mockKvGet,
+      kvSet: mockKvSet,
+    });
+
+    expect(res).toEqual(kvPayload);
+    expect(mockKvGet).toHaveBeenCalledWith('tt-kv');
+    expect(mockKvSet).not.toHaveBeenCalled();
+  });
+
+  it('writes to KV after scraping on KV miss', async () => {
+    const mockKvGet = vi.fn().mockResolvedValue(null);
+    const mockKvSet = vi.fn().mockResolvedValue(undefined);
+
+    const res = await runFetchers({
+      ...baseCtx,
+      movie: { ...baseCtx.movie, imdbId: 'tt-kvmiss', year: '2010' },
+      kvGet: mockKvGet,
+      kvSet: mockKvSet,
+    });
+
+    expect(mockKvGet).toHaveBeenCalledWith('tt-kvmiss');
+    expect(mockKvSet).toHaveBeenCalledWith('tt-kvmiss', res, '2010');
   });
 });

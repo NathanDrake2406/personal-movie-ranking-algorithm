@@ -28,6 +28,8 @@ type FetcherContext = {
   wikidata: WikidataIds;
   env: Record<string, string | undefined>;
   signal?: AbortSignal;
+  kvGet?: (imdbId: string) => Promise<ScorePayload | null>;
+  kvSet?: (imdbId: string, payload: ScorePayload, movieYear: string | undefined) => Promise<void>;
 };
 
 type OmdbFallback = { rt?: number | null; metacritic?: number | null };
@@ -668,6 +670,15 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   const cached = scoreCache.get(cacheKey);
   if (cached) return cached;
 
+  // Layer 2: KV cache (optional, days-scale TTL)
+  if (ctx.kvGet) {
+    const kvCached = await ctx.kvGet(cacheKey);
+    if (kvCached) {
+      scoreCache.set(cacheKey, kvCached);
+      return kvCached;
+    }
+  }
+
   const startMs = Date.now();
 
   // Fetch ALL sources in parallel (no waiting for IMDb first)
@@ -749,6 +760,12 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
     imdbSummary: imdbResult.summary || undefined,
   };
   scoreCache.set(cacheKey, payload);
+
+  // Write-through to KV (fire-and-forget)
+  if (ctx.kvSet) {
+    ctx.kvSet(cacheKey, payload, ctx.movie.year).catch(() => {});
+  }
+
   return payload;
 }
 
