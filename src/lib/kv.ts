@@ -67,7 +67,8 @@ export async function kvGet(imdbId: string): Promise<ScorePayload | null> {
     const data = await client.get<CachedPayload>(kvKey(imdbId));
     if (data && data._v === KV_SCHEMA_VERSION) {
       log.info('kv_hit', { imdbId });
-      return data;
+      const { _v, ...payload } = data;
+      return payload;
     }
     return null;
   } catch (err) {

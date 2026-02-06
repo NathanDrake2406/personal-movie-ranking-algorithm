@@ -159,6 +159,24 @@ describe('runFetchers', () => {
     expect(mockKvSet).not.toHaveBeenCalled();
   });
 
+  it('skips KV write when any source is missing', async () => {
+    const mockKvGet = vi.fn().mockResolvedValue(null);
+    const mockKvSet = vi.fn().mockResolvedValue(undefined);
+
+    // No wikidata slugs + no OMDB key = most sources fail
+    const res = await runFetchers({
+      movie: { imdbId: 'tt-degraded', title: 'Degraded Movie', year: '1994' },
+      wikidata: {},
+      env: {},
+      kvGet: mockKvGet,
+      kvSet: mockKvSet,
+    });
+
+    expect(res.missingSources!.length).toBeGreaterThan(0);
+    expect(mockKvGet).toHaveBeenCalledWith('tt-degraded');
+    expect(mockKvSet).not.toHaveBeenCalled();
+  });
+
   it('writes to KV after scraping on KV miss', async () => {
     const mockKvGet = vi.fn().mockResolvedValue(null);
     const mockKvSet = vi.fn().mockResolvedValue(undefined);

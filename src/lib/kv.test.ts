@@ -68,10 +68,11 @@ describe('kvGet', () => {
     _resetKvClient();
   });
 
-  it('returns cached payload on KV hit', async () => {
+  it('returns cached payload on KV hit (without _v field)', async () => {
     mockGet.mockResolvedValue({ ...samplePayload, _v: 1 });
     const result = await kvGet('tt0111161');
-    expect(result).toEqual({ ...samplePayload, _v: 1 });
+    expect(result).toEqual(samplePayload);
+    expect(result).not.toHaveProperty('_v');
     expect(mockGet).toHaveBeenCalledWith('score:tt0111161');
   });
 
@@ -104,7 +105,8 @@ describe('kvGet', () => {
     process.env.UPSTASH_REDIS_REST_TOKEN = 'native-token';
     mockGet.mockResolvedValue({ ...samplePayload, _v: 1 });
     const result = await kvGet('tt0111161');
-    expect(result).toEqual({ ...samplePayload, _v: 1 });
+    expect(result).toEqual(samplePayload);
+    expect(result).not.toHaveProperty('_v');
   });
 });
 
