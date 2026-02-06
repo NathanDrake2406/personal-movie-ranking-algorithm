@@ -33,8 +33,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not determine IMDb ID' }, { status: 422 });
     }
 
-    const wikidata = await fetchWikidataIds(movie.imdbId, request.signal);
-    const payload = await runFetchers({ movie, wikidata, env, signal: request.signal, kvGet, kvSet });
+    const wikidataPromise = fetchWikidataIds(movie.imdbId, request.signal);
+    const payload = await runFetchers({ movie, wikidata: wikidataPromise, env, signal: request.signal, kvGet, kvSet });
 
     return NextResponse.json(payload, { status: 200 });
   } catch (err) {

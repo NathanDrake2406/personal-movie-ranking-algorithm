@@ -665,14 +665,24 @@ async function fetchDouban(ctx: FetcherContext): Promise<SourceScore> {
   }
 }
 
-export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
-  const cacheKey = ctx.movie.imdbId;
+type RunFetchersInput = {
+  movie: MovieInfo;
+  wikidata: WikidataIds | Promise<WikidataIds>;
+  env: Record<string, string | undefined>;
+  signal?: AbortSignal;
+  kvGet?: (imdbId: string) => Promise<ScorePayload | null>;
+  kvSet?: (imdbId: string, payload: ScorePayload, movieYear: string | undefined) => Promise<void>;
+};
+
+export async function runFetchers(input: RunFetchersInput): Promise<ScorePayload> {
+  const { movie, env, signal, kvGet: kvGetFn, kvSet: kvSetFn } = input;
+  const cacheKey = movie.imdbId;
   const cached = scoreCache.get(cacheKey);
   if (cached) return cached;
 
   // Layer 2: KV cache (optional, days-scale TTL)
-  if (ctx.kvGet) {
-    const kvCached = await ctx.kvGet(cacheKey);
+  if (kvGetFn) {
+    const kvCached = await kvGetFn(cacheKey);
     if (kvCached) {
       scoreCache.set(cacheKey, kvCached);
       return kvCached;
@@ -681,9 +691,20 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
 
   const startMs = Date.now();
 
-  // Fetch ALL sources in parallel (no waiting for IMDb first)
-  const [imdbResult, rtResult, metacriticScore, letterboxdScore, allocineScores, doubanScore] = await Promise.all([
-    fetchImdb(ctx),
+  // IMDb only needs movie.imdbId, not wikidata — start it immediately
+  const imdbCtx: FetcherContext = { movie, wikidata: {} as WikidataIds, env, signal, kvGet: kvGetFn, kvSet: kvSetFn };
+  const imdbPromise = fetchImdb(imdbCtx);
+
+  // Resolve wikidata in parallel with IMDb (may already be resolved)
+  const [wikidata, imdbResult] = await Promise.all([
+    Promise.resolve(input.wikidata),
+    imdbPromise,
+  ]);
+
+  const ctx: FetcherContext = { movie, wikidata, env, signal, kvGet: kvGetFn, kvSet: kvSetFn };
+
+  // Fetch remaining sources that depend on wikidata slugs
+  const [rtResult, metacriticScore, letterboxdScore, allocineScores, doubanScore] = await Promise.all([
     fetchRottenTomatoes(ctx), // No fallback passed - apply post-hoc if needed
     fetchMetacritic(ctx),     // No fallback passed - apply post-hoc if needed
     fetchLetterboxd(ctx),
@@ -762,8 +783,8 @@ export async function runFetchers(ctx: FetcherContext): Promise<ScorePayload> {
   scoreCache.set(cacheKey, payload);
 
   // Write-through to KV (fire-and-forget) — only cache when ALL sources succeeded
-  if (ctx.kvSet && missingSources.length === 0) {
-    ctx.kvSet(cacheKey, payload, ctx.movie.year).catch((err) => {
+  if (kvSetFn && missingSources.length === 0) {
+    kvSetFn(cacheKey, payload, movie.year).catch((err) => {
       log.warn('kv_writeback_failed', { imdbId: cacheKey, error: (err as Error).message });
     });
   }
