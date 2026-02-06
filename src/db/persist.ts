@@ -7,7 +7,7 @@ import { WEIGHTED_SOURCE_KEYS } from "@/lib/scoring";
 import { log } from "@/lib/logger";
 
 /** Bump when weights or scoring algorithm change — enables re-derivation queries. */
-export const CURRENT_SCORE_VERSION = 1;
+export const CURRENT_SCORE_VERSION = 2;
 const BACKFILL_STALE_TIMESTAMP_MS = 0;
 
 // ─── Pure mapping functions ───────────────────────────────────────────────────

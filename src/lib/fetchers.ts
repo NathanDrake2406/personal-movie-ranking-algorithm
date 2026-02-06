@@ -954,7 +954,18 @@ export async function runFetchers(
         : undefined,
     imdbSummary: imdbResult.summary || undefined,
   };
-  scoreCache.set(cacheKey, payload);
+  // A source with normalized=null and NO error means the scraper ran clean against
+  // the real page and found no data — that's safe to cache (e.g., no press reviews).
+  // A source with an error string could be a network/scrape failure — don't cache.
+  const hasTransientFailure = allScores.some(
+    (s) => s.normalized == null && s.error != null,
+  );
+
+  // Only cache in memory when all sources resolved cleanly — a transient failure
+  // (e.g., "temporarily unavailable") should allow the next request to retry fresh.
+  if (!hasTransientFailure) {
+    scoreCache.set(cacheKey, payload);
+  }
 
   // Deferred work: logging, KV write-through, and DB persistence (run after response is sent)
   const deferred = async () => {
@@ -973,13 +984,6 @@ export async function runFetchers(
       overallScore: overall?.score ?? null,
     });
 
-    // Cache to KV unless a source had a transient failure (might succeed on retry).
-    // A source with normalized=null and NO error means the scraper ran clean against
-    // the real page and found no data — that's safe to cache (e.g., no press reviews).
-    // A source with an error string could be a network/scrape failure — don't cache.
-    const hasTransientFailure = allScores.some(
-      (s) => s.normalized == null && s.error != null,
-    );
     if (kvSetFn && !hasTransientFailure) {
       kvSetFn(cacheKey, payload, movie.releaseDate, movie.year).catch((err) => {
         log.warn("kv_writeback_failed", {

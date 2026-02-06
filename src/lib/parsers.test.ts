@@ -33,7 +33,71 @@ describe("parsers", () => {
   });
 
   describe("parseAllocineHtml", () => {
-    it("extracts both press and user ratings", () => {
+    it("extracts both press and user ratings with counts", () => {
+      const html = `
+        <div>Presse</div>
+        <span class="stareval-note">3,8</span>
+        <span class="stareval-review light"> 15 critiques</span>
+        <span class="stareval-note">4,2</span>
+        <span class="stareval-review light"> 117136 notes, 7299 critiques</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBe(3.8);
+      expect(result.press.count).toBe(15);
+      expect(result.user.value).toBe(4.2);
+      expect(result.user.count).toBe(117136);
+    });
+
+    it("extracts user rating and count when no press section", () => {
+      const html = `
+        <span class="stareval-note">4,5</span>
+        <span class="stareval-review light"> 50000 notes, 2000 critiques</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBeNull();
+      expect(result.press.count).toBeNull();
+      expect(result.user.value).toBe(4.5);
+      expect(result.user.count).toBe(50000);
+    });
+
+    it("handles > Presse < with spaces", () => {
+      const html = `
+        <div>> Presse <</div>
+        <span class="stareval-note">2,9</span>
+        <span class="stareval-review light"> 8 critiques</span>
+        <span class="stareval-note">3,1</span>
+        <span class="stareval-review light"> 9500 notes</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBe(2.9);
+      expect(result.press.count).toBe(8);
+      expect(result.user.value).toBe(3.1);
+      expect(result.user.count).toBe(9500);
+    });
+
+    it("returns nulls for page without ratings", () => {
+      const html = "<html>No ratings</html>";
+      const result = parseAllocineHtml(html);
+      expect(result.press.value).toBeNull();
+      expect(result.press.count).toBeNull();
+      expect(result.user.value).toBeNull();
+      expect(result.user.count).toBeNull();
+    });
+
+    it("handles singular forms (1 critique, 1 note)", () => {
+      const html = `
+        <div>Presse</div>
+        <span class="stareval-note">4,0</span>
+        <span class="stareval-review light"> 1 critique</span>
+        <span class="stareval-note">3,5</span>
+        <span class="stareval-review light"> 1 note</span>
+      `;
+      const result = parseAllocineHtml(html);
+      expect(result.press.count).toBe(1);
+      expect(result.user.count).toBe(1);
+    });
+
+    it("returns count null when stareval-review element is missing", () => {
       const html = `
         <div>Presse</div>
         <span class="stareval-note">3,8</span>
@@ -41,34 +105,9 @@ describe("parsers", () => {
       `;
       const result = parseAllocineHtml(html);
       expect(result.press.value).toBe(3.8);
+      expect(result.press.count).toBeNull();
       expect(result.user.value).toBe(4.2);
-    });
-
-    it("extracts user rating only when no press section", () => {
-      const html = `
-        <span class="stareval-note">4,5</span>
-      `;
-      const result = parseAllocineHtml(html);
-      expect(result.press.value).toBeNull();
-      expect(result.user.value).toBe(4.5);
-    });
-
-    it("handles > Presse < with spaces", () => {
-      const html = `
-        <div>> Presse <</div>
-        <span class="stareval-note">2,9</span>
-        <span class="stareval-note">3,1</span>
-      `;
-      const result = parseAllocineHtml(html);
-      expect(result.press.value).toBe(2.9);
-      expect(result.user.value).toBe(3.1);
-    });
-
-    it("returns nulls for page without ratings", () => {
-      const html = "<html>No ratings</html>";
-      const result = parseAllocineHtml(html);
-      expect(result.press.value).toBeNull();
-      expect(result.user.value).toBeNull();
+      expect(result.user.count).toBeNull();
     });
   });
 

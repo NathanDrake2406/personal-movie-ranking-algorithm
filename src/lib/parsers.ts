@@ -30,6 +30,11 @@ export function parseAllocineHtml(html: string): ParsedAllocineRatings {
     ...html.matchAll(/class="stareval-note"[^>]*>([^<]+)</g),
   ];
 
+  // Find all .stareval-review texts (contain review/rating counts)
+  const reviewMatches = [
+    ...html.matchAll(/class="stareval-review[^"]*">([^<]+)/g),
+  ];
+
   // Check if "Presse" section exists (indicates first rating is press)
   const hasPress = html.includes("> Presse <") || html.includes(">Presse<");
 
@@ -39,17 +44,42 @@ export function parseAllocineHtml(html: string): ParsedAllocineRatings {
     return Number.isFinite(num) ? num : null;
   };
 
+  const parseCount = (
+    text: string | undefined,
+    type: "press" | "user",
+  ): number | null => {
+    if (!text) return null;
+    const trimmed = text.trim();
+    if (type === "press") {
+      // Press: "15 critiques" → 15
+      const match = trimmed.match(/(\d+)\s*critiques?/);
+      return match?.[1] ? parseInt(match[1], 10) : null;
+    }
+    // User: "117136 notes, 7299 critiques" → 117136 (star ratings count)
+    const match = trimmed.match(/(\d+)\s*notes?/);
+    return match?.[1] ? parseInt(match[1], 10) : null;
+  };
+
   if (hasPress && noteMatches.length >= 2) {
     return {
-      press: { value: parseNote(noteMatches[0]?.[1]), count: null },
-      user: { value: parseNote(noteMatches[1]?.[1]), count: null },
+      press: {
+        value: parseNote(noteMatches[0]?.[1]),
+        count: parseCount(reviewMatches[0]?.[1], "press"),
+      },
+      user: {
+        value: parseNote(noteMatches[1]?.[1]),
+        count: parseCount(reviewMatches[1]?.[1], "user"),
+      },
     };
   }
 
   // No press section - first rating is user only
   return {
     press: { value: null, count: null },
-    user: { value: parseNote(noteMatches[0]?.[1]), count: null },
+    user: {
+      value: parseNote(noteMatches[0]?.[1]),
+      count: parseCount(reviewMatches[0]?.[1], "user"),
+    },
   };
 }
 

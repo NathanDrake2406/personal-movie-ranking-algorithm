@@ -68,7 +68,7 @@ function getRedisClient(): Redis | null {
 // ─── Public API (gracefully degrading) ───────────────────────────────────────
 
 // Bump when ScorePayload shape changes to auto-invalidate stale cache entries
-const KV_SCHEMA_VERSION = 1;
+const KV_SCHEMA_VERSION = 2;
 
 type CachedPayload = ScorePayload & { _v: number };
 

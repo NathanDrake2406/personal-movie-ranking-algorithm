@@ -54,7 +54,7 @@ export type WikidataIds = {
 
 export type OverallScore = {
   score: number;
-  coverage: number; // fraction of total weight present (0-1)
+  coverage: number; // fraction of sources present (0-1), count-based
   disagreement: number; // std dev of source scores (0-100)
 };
 

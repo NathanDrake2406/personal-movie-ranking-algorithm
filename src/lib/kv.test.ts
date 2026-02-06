@@ -96,7 +96,7 @@ describe("kvGet", () => {
   });
 
   it("returns cached payload on KV hit (without _v field)", async () => {
-    mockGet.mockResolvedValue({ ...samplePayload, _v: 1 });
+    mockGet.mockResolvedValue({ ...samplePayload, _v: 2 });
     const result = await kvGet("tt0111161");
     expect(result).toEqual(samplePayload);
     expect(result).not.toHaveProperty("_v");
@@ -130,7 +130,7 @@ describe("kvGet", () => {
     _resetKvClient();
     process.env.UPSTASH_REDIS_REST_URL = "https://native.upstash.io";
     process.env.UPSTASH_REDIS_REST_TOKEN = "native-token";
-    mockGet.mockResolvedValue({ ...samplePayload, _v: 1 });
+    mockGet.mockResolvedValue({ ...samplePayload, _v: 2 });
     const result = await kvGet("tt0111161");
     expect(result).toEqual(samplePayload);
     expect(result).not.toHaveProperty("_v");
@@ -155,7 +155,7 @@ describe("kvSet", () => {
     await kvSet("tt0111161", samplePayload, "1994-09-23", "1994");
     expect(mockSet).toHaveBeenCalledWith(
       "score:tt0111161",
-      { ...samplePayload, _v: 1 },
+      { ...samplePayload, _v: 2 },
       { ex: SIXTY_DAYS },
     );
   });
@@ -165,7 +165,7 @@ describe("kvSet", () => {
     await kvSet("tt1234567", samplePayload, "2025-09-01", "2025");
     expect(mockSet).toHaveBeenCalledWith(
       "score:tt1234567",
-      { ...samplePayload, _v: 1 },
+      { ...samplePayload, _v: 2 },
       { ex: ONE_DAY },
     );
   });
@@ -180,7 +180,7 @@ describe("kvSet", () => {
     await kvSet("tt0000001", samplePayload, undefined, "2025");
     expect(mockSet).toHaveBeenCalledWith(
       "score:tt0000001",
-      { ...samplePayload, _v: 1 },
+      { ...samplePayload, _v: 2 },
       { ex: ONE_DAY },
     );
   });
