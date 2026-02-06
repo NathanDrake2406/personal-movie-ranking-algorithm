@@ -253,7 +253,7 @@ export default function Home() {
   const error = fetchState.status === 'error' ? fetchState.error : null;
   const data = fetchState.status === 'success' ? fetchState.data : null;
 
-  const fetchScores = async (tmdbId: number) => {
+  const fetchScores = useCallback(async (tmdbId: number) => {
     // Cancel any in-flight request
     scoreAbortController.current?.abort();
     scoreAbortController.current = new AbortController();
@@ -275,7 +275,7 @@ export default function Home() {
       if ((err as Error).name === 'AbortError') return;
       dispatch({ type: 'FETCH_ERROR', error: (err as Error).message });
     }
-  };
+  }, []); // dispatch and setLastTmdbId are stable; scoreAbortController is a ref
 
   const handleReset = () => {
     setResetKey((k) => k + 1);
@@ -333,7 +333,7 @@ export default function Home() {
 
         <SearchCombobox
           key={resetKey}
-          onSelect={(tmdbId) => fetchScores(tmdbId)}
+          onSelect={fetchScores}
         />
 
         {error ? (
