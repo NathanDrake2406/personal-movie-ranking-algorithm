@@ -4,6 +4,7 @@ import { runFetchers } from '@/lib/fetchers';
 import { resolveByTmdbId } from '@/lib/resolve';
 import { getApiKeys } from '@/lib/config';
 import { log } from '@/lib/logger';
+import { kvGet, kvSet } from '@/lib/kv';
 
 export async function POST(request: Request) {
   let tmdbId: number | undefined;
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     const wikidata = await fetchWikidataIds(movie.imdbId, request.signal);
-    const payload = await runFetchers({ movie, wikidata, env, signal: request.signal });
+    const payload = await runFetchers({ movie, wikidata, env, signal: request.signal, kvGet, kvSet });
 
     return NextResponse.json(payload, { status: 200 });
   } catch (err) {
