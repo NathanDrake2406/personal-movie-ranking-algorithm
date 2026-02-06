@@ -24,6 +24,9 @@ const WEIGHTS: Record<string, number> = {
   douban: 0.04,
 };
 
+/** The 9 weighted source keys — single source of truth for scoring + persistence. */
+export const WEIGHTED_SOURCE_KEYS: ReadonlySet<string> = new Set(Object.keys(WEIGHTS));
+
 // Minimum sources required for a verdict
 const MIN_SOURCES_FOR_VERDICT = 6;
 

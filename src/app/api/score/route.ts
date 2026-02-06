@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const wikidataPromise = fetchWikidataIds(movie.imdbId, request.signal);
     const { payload, deferred } = await runFetchers({ movie, wikidata: wikidataPromise, env, signal: request.signal, kvGet, kvSet });
-    after(deferred);
+    after(async () => { await deferred(); });
 
     return NextResponse.json(payload, { status: 200 });
   } catch (err) {

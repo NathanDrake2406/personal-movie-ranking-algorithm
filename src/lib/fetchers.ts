@@ -2,6 +2,7 @@ import { fetchJson, fetchText } from './http';
 import { log } from './logger';
 import { normalizeScore } from './normalize';
 import { computeOverallScore } from './scoring';
+import { persistScores } from '@/db/persist';
 import type { MovieInfo, ScorePayload, SourceScore, WikidataIds } from './types';
 import { MemoryCache } from './cache';
 import { getApiKeys } from './config';
@@ -685,23 +686,32 @@ type RunFetchersInput = {
 
 type FetchersResult = {
   payload: ScorePayload;
-  deferred: () => void;
+  deferred: () => Promise<void>;
 };
-
-const noop = () => {};
 
 export async function runFetchers(input: RunFetchersInput): Promise<FetchersResult> {
   const { movie, env, signal, kvGet: kvGetFn, kvSet: kvSetFn } = input;
   const cacheKey = movie.imdbId;
   const cached = scoreCache.get(cacheKey);
-  if (cached) return { payload: cached, deferred: noop };
+  if (cached) {
+    // Backfill mode is intentional here: in-memory cache may be older than this
+    // request and should never overwrite existing DB rows.
+    return {
+      payload: cached,
+      deferred: async () => {
+        await persistScores(cached, { backfill: true });
+      },
+    };
+  }
 
   // Layer 2: KV cache (optional, days-scale TTL)
   if (kvGetFn) {
     const kvCached = await kvGetFn(cacheKey);
     if (kvCached) {
       scoreCache.set(cacheKey, kvCached);
-      return { payload: kvCached, deferred: noop };
+      // Backfill KV-cached data to Postgres (insert-if-absent only — never overwrite
+      // existing rows with potentially stale cached data)
+      return { payload: kvCached, deferred: async () => { await persistScores(kvCached, { backfill: true }); } };
     }
   }
 
@@ -783,8 +793,8 @@ export async function runFetchers(input: RunFetchersInput): Promise<FetchersResu
   };
   scoreCache.set(cacheKey, payload);
 
-  // Deferred work: logging and KV write-through (run after response is sent)
-  const deferred = () => {
+  // Deferred work: logging, KV write-through, and DB persistence (run after response is sent)
+  const deferred = async () => {
     for (const s of allScores) {
       log.info('source_fetched', {
         imdbId: movie.imdbId,
@@ -800,11 +810,21 @@ export async function runFetchers(input: RunFetchersInput): Promise<FetchersResu
       overallScore: overall?.score ?? null,
     });
 
-    if (kvSetFn && missingSources.length === 0) {
+    // Cache to KV unless a source had a transient failure (might succeed on retry).
+    // A source with normalized=null and NO error means the scraper ran clean against
+    // the real page and found no data — that's safe to cache (e.g., no press reviews).
+    // A source with an error string could be a network/scrape failure — don't cache.
+    const hasTransientFailure = allScores.some(
+      (s) => s.normalized == null && s.error != null,
+    );
+    if (kvSetFn && !hasTransientFailure) {
       kvSetFn(cacheKey, payload, movie.year).catch((err) => {
         log.warn('kv_writeback_failed', { imdbId: cacheKey, error: (err as Error).message });
       });
     }
+
+    // Persist to Postgres (no completeness gate — quality filtered at query time)
+    await persistScores(payload);
   };
 
   return { payload, deferred };

@@ -49,3 +49,4 @@ CLAUDE.md
 *.claude.*
 .cursor/
 .github/copilot-instructions.md
+.env*.local
