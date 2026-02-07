@@ -50,7 +50,7 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
 }
 
 function formatScore(val: number | null) {
-  return val == null ? "—" : Math.round(val).toString();
+  return val == null ? "—" : val.toFixed(1);
 }
 
 const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {

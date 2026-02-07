@@ -33,6 +33,19 @@ export default async function TopPage({
 
   const headlineLimit = `Top ${limit}`;
 
+  // Dense ranking: movies with identical scores (to 1 d.p.) share the same rank
+  const ranks: number[] = [];
+  for (let i = 0; i < movies.length; i++) {
+    if (i === 0) {
+      ranks.push(1);
+    } else {
+      const tied =
+        movies[i].overallScore.toFixed(1) ===
+        movies[i - 1].overallScore.toFixed(1);
+      ranks.push(tied ? ranks[i - 1] : i + 1);
+    }
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.masthead}>
@@ -55,7 +68,7 @@ export default async function TopPage({
           {movies.map((movie, i) => (
             <li key={movie.imdbId}>
               <Link href={`/?tmdbId=${movie.tmdbId}`} className={styles.row}>
-                <span className={styles.rank}>{i + 1}</span>
+                <span className={styles.rank}>{ranks[i]}</span>
                 <div className={styles.posterThumbContainer}>
                   {movie.poster ? (
                     <PosterThumbnail src={movie.poster} alt={movie.title} />
@@ -73,7 +86,7 @@ export default async function TopPage({
                 </div>
                 <div className={styles.scoreCol}>
                   <span className={styles.scoreValue}>
-                    {Math.round(movie.overallScore)}
+                    {movie.overallScore.toFixed(1)}
                   </span>
                   <p className={styles.scoreSources}>
                     {movie.sourcesCount}/9 sources
