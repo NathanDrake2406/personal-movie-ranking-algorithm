@@ -4,6 +4,7 @@ import { getTopMovies } from "@/db/queries";
 import { NavTabs } from "../NavTabs";
 import { PosterThumbnail } from "./PosterThumbnail";
 import { TopFilters } from "./TopFilters";
+import { ScrollToTop } from "./ScrollToTop";
 import styles from "./top.module.css";
 
 export const revalidate = 3600;
@@ -63,7 +64,6 @@ export default async function TopPage({
                     <PosterThumbnail
                       src={movie.poster}
                       alt={movie.title}
-                      className={styles.posterThumb}
                     />
                   ) : (
                     <div className={styles.posterEmpty} />
@@ -97,6 +97,7 @@ export default async function TopPage({
           </Link>
         </div>
       )}
+      <ScrollToTop />
     </div>
   );
 }

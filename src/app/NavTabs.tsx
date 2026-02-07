@@ -6,7 +6,7 @@ import styles from "./NavTabs.module.css";
 
 const tabs = [
   { label: "Search", href: "/" },
-  { label: "Top 10", href: "/top" },
+  { label: "The List", href: "/top" },
 ] as const;
 
 export function NavTabs() {
