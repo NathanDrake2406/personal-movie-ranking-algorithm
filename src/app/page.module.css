@@ -805,6 +805,13 @@
   font-weight: 600;
   color: #e8e8e8;
   margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sourceIcon {
+  flex-shrink: 0;
 }
 
 .scoreValue {

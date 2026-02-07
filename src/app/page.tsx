@@ -11,6 +11,7 @@ import {
 import styles from "./page.module.css";
 import { Poster } from "./Poster";
 import { SearchCombobox } from "./SearchCombobox";
+import { SourceIcon } from "./SourceIcon";
 import dynamic from "next/dynamic";
 
 const ThemesSection = dynamic(() =>
@@ -51,7 +52,10 @@ function formatScore(val: number | null) {
 const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
   return (
     <div className={styles.scoreCard}>
-      <p className={styles.scoreSource}>{score.label}</p>
+      <p className={styles.scoreSource}>
+        <SourceIcon source={score.source} size={28} className={styles.sourceIcon} />
+        {score.label}
+      </p>
       <p className={styles.scoreValue}>{formatScore(score.normalized)}</p>
       {score.raw?.value != null ? (
         <p className={styles.scoreRaw}>
@@ -100,7 +104,10 @@ const AllocineScoreCard = memo(function AllocineScoreCard({
 
   return (
     <div className={`${styles.scoreCard} ${styles.rtCard}`}>
-      <p className={styles.scoreSource}>AlloCiné</p>
+      <p className={styles.scoreSource}>
+        <SourceIcon source="allocine" size={28} className={styles.sourceIcon} />
+        AlloCiné
+      </p>
 
       {/* Press & User scores side by side */}
       <div className={styles.rtMainScores}>
@@ -153,7 +160,10 @@ const RTScoreCard = memo(function RTScoreCard({
 }: RTScoreCardProps) {
   return (
     <div className={`${styles.scoreCard} ${styles.rtCard}`}>
-      <p className={styles.scoreSource}>Rotten Tomatoes</p>
+      <p className={styles.scoreSource}>
+        <SourceIcon source="rotten_tomatoes" size={28} className={styles.sourceIcon} />
+        Rotten Tomatoes
+      </p>
 
       {/* Main scores: Critics & Audience side by side */}
       <div className={styles.rtMainScores}>
