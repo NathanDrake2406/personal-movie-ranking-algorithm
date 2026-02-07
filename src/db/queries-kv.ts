@@ -2,7 +2,7 @@ import { Redis } from "@upstash/redis";
 import { log } from "@/lib/logger";
 import type { TopMovie } from "./queries";
 
-const TOP_KV_TTL_SEC = 60 * 60; // 1 hour
+const TOP_KV_TTL_SEC = 6 * 60 * 60; // 6 hours
 
 // ─── Redis client (reuses the same lazy singleton pattern) ───────────────────
 
@@ -59,6 +59,20 @@ export async function kvTopSet(
     await client.set(kvKey(filterKey), movies, { ex: TOP_KV_TTL_SEC });
   } catch (err) {
     log.warn("kv_top_set_failed", { error: (err as Error).message });
+  }
+}
+
+export async function kvTopClear(): Promise<number> {
+  try {
+    const client = getRedisClient();
+    if (!client) return 0;
+    const keys: string[] = await client.keys("top:*");
+    if (keys.length === 0) return 0;
+    await client.del(...keys);
+    return keys.length;
+  } catch (err) {
+    log.warn("kv_top_clear_failed", { error: (err as Error).message });
+    return 0;
   }
 }
 

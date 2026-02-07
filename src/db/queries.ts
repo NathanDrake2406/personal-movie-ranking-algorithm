@@ -35,7 +35,7 @@ function cacheKey(
   limit: number,
   minSources: number | undefined,
 ): string {
-  return `${sort}:${limit}:${minSources ?? ""}`;
+  return `v${CURRENT_SCORE_VERSION}:${sort}:${limit}:${minSources ?? ""}`;
 }
 
 export async function getTopMovies(
