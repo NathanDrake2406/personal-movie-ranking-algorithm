@@ -9,7 +9,11 @@ import styles from "./top.module.css";
 
 export const revalidate = 3600;
 
-type SearchParams = Promise<{ limit?: string; sources?: string; sort?: string }>;
+type SearchParams = Promise<{
+  limit?: string;
+  sources?: string;
+  sort?: string;
+}>;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (value == null) return fallback;
@@ -63,7 +67,7 @@ export default async function TopPage({
   return (
     <div className={styles.page}>
       <header className={styles.masthead}>
-        <Link href="/" className={styles.mastheadTitle}>
+        <Link href="/" prefetch={false} className={styles.mastheadTitle}>
           The Film Index
         </Link>
         <NavTabs />
@@ -81,7 +85,11 @@ export default async function TopPage({
         <ol className={styles.list}>
           {movies.map((movie, i) => (
             <li key={movie.imdbId}>
-              <Link href={`/?tmdbId=${movie.tmdbId}`} className={styles.row}>
+              <Link
+                href={`/?tmdbId=${movie.tmdbId}`}
+                prefetch={false}
+                className={styles.row}
+              >
                 <span className={styles.rank}>{ranks[i]}</span>
                 <div className={styles.posterThumbContainer}>
                   {movie.poster ? (
@@ -124,7 +132,7 @@ export default async function TopPage({
           <p className={styles.emptyText}>
             No films match these filters yet. Search for a movie to get started.
           </p>
-          <Link href="/" className={styles.emptyLink}>
+          <Link href="/" prefetch={false} className={styles.emptyLink}>
             Score a film
           </Link>
         </div>

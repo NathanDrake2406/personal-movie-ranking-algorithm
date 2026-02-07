@@ -21,6 +21,7 @@ export function NavTabs() {
           <Link
             key={tab.href}
             href={tab.href}
+            prefetch={false}
             className={`${styles.pill} ${isActive ? styles.pillActive : ""}`}
           >
             {tab.label}
