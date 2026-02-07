@@ -28,24 +28,26 @@ export type TopMoviesOptions = {
   readonly limit?: number;
   readonly minSources?: number;
   readonly sort?: TopSort;
+  readonly genre?: string;
 };
 
 function cacheKey(
   sort: TopSort,
   limit: number,
   minSources: number | undefined,
+  genre: string | undefined,
 ): string {
-  return `v${CURRENT_SCORE_VERSION}:${sort}:${limit}:${minSources ?? ""}`;
+  return `v${CURRENT_SCORE_VERSION}:${sort}:${limit}:${minSources ?? ""}:${genre ?? ""}`;
 }
 
 export async function getTopMovies(
   options: TopMoviesOptions = {},
 ): Promise<readonly TopMovie[]> {
-  const { limit = 10, minSources, sort = "top" } = options;
+  const { limit = 10, minSources, sort = "top", genre } = options;
   const db = getDb();
   if (!db) return [];
 
-  const key = cacheKey(sort, limit, minSources);
+  const key = cacheKey(sort, limit, minSources, genre);
 
   // L1: In-memory
   const l1 = topMoviesCache.get(key);
@@ -71,6 +73,10 @@ export async function getTopMovies(
 
   if (minSources != null) {
     conditions.push(gte(movies.sourcesCount, minSources));
+  }
+
+  if (genre) {
+    conditions.push(sql`${movies.genres} @> ARRAY[${genre}]::text[]`);
   }
 
   if (sort === "divisive") {

@@ -5,6 +5,7 @@ import { NavTabs } from "../NavTabs";
 import { PosterThumbnail } from "./PosterThumbnail";
 import { TopFilters } from "./TopFilters";
 import { ScrollToTop } from "./ScrollToTop";
+import { GENRES, type Genre } from "./genres";
 import styles from "./top.module.css";
 
 export const revalidate = 3600;
@@ -13,6 +14,7 @@ type SearchParams = Promise<{
   limit?: string;
   sources?: string;
   sort?: string;
+  genre?: string;
 }>;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -37,11 +39,31 @@ export default async function TopPage({
     params.sources != null && params.sources !== ""
       ? parsePositiveInt(params.sources, undefined as unknown as number)
       : undefined;
+  const genre: Genre | undefined =
+    params.genre && (GENRES as readonly string[]).includes(params.genre)
+      ? (params.genre as Genre)
+      : undefined;
 
+  const effectiveLimit = genre
+    ? 500
+    : sort === "divisive"
+      ? Math.min(limit, 500)
+      : limit;
   const isDivisive = sort === "divisive";
-  const movies = await getTopMovies({ limit, minSources, sort });
+  const movies = await getTopMovies({
+    limit: effectiveLimit,
+    minSources,
+    sort,
+    genre,
+  });
 
-  const headline = isDivisive ? `Most Divisive ${limit}` : `Top ${limit}`;
+  const headline = genre
+    ? isDivisive
+      ? `Most Divisive ${genre}`
+      : `Highest Rated ${genre}`
+    : isDivisive
+      ? `Most Divisive ${effectiveLimit}`
+      : `Top ${effectiveLimit}`;
   const subhead = isDivisive
     ? "Films where critics and audiences disagree the most"
     : "Highest-rated films scored so far";

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import { GENRES } from "./genres";
 import styles from "./top.module.css";
 
 const sortOptions = [
@@ -11,8 +12,6 @@ const sortOptions = [
 
 const limitOptions = [
   { value: "10", label: "Top 10" },
-  { value: "20", label: "Top 20" },
-  { value: "50", label: "Top 50" },
   { value: "100", label: "Top 100" },
   { value: "1000", label: "Top 1000" },
 ] as const;
@@ -28,8 +27,12 @@ export function TopFilters() {
   const searchParams = useSearchParams();
 
   const currentSort = searchParams.get("sort") ?? "top";
-  const currentLimit = searchParams.get("limit") ?? "10";
+  const currentGenre = searchParams.get("genre") ?? "";
   const currentSources = searchParams.get("sources") ?? "";
+
+  const rawLimit = searchParams.get("limit") ?? "10";
+  const currentLimit =
+    currentSort === "divisive" && rawLimit === "1000" ? "500" : rawLimit;
 
   const updateParams = useCallback(
     (key: string, value: string) => {
@@ -62,14 +65,28 @@ export function TopFilters() {
           </option>
         ))}
       </select>
+      {!currentGenre && (
+        <select
+          className={styles.filterSelect}
+          value={currentLimit}
+          onChange={(e) => updateParams("limit", e.target.value)}
+        >
+          {limitOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      )}
       <select
         className={styles.filterSelect}
-        value={currentLimit}
-        onChange={(e) => updateParams("limit", e.target.value)}
+        value={currentGenre}
+        onChange={(e) => updateParams("genre", e.target.value)}
       >
-        {limitOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
+        <option value="">All Genres</option>
+        {GENRES.map((g) => (
+          <option key={g} value={g}>
+            {g}
           </option>
         ))}
       </select>
