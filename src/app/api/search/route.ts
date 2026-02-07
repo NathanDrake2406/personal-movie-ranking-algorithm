@@ -73,11 +73,18 @@ export async function GET(request: Request) {
     const { title: searchTitle, year } = parseQuery(query);
     const cacheKey = `${searchTitle.toLowerCase()}|${year ?? ""}`;
 
+    const cacheHeaders = {
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    };
+
     // L1: in-memory cache (same instance)
     const l1 = searchCache.get(cacheKey);
     if (l1) {
       const ranked = rankResults(l1, searchTitle, year, 10);
-      return NextResponse.json({ results: ranked.map(toResponse) });
+      return NextResponse.json(
+        { results: ranked.map(toResponse) },
+        { headers: cacheHeaders },
+      );
     }
 
     // L2: KV cache (shared across all instances/users)
@@ -85,7 +92,10 @@ export async function GET(request: Request) {
     if (l2) {
       searchCache.set(cacheKey, l2);
       const ranked = rankResults(l2, searchTitle, year, 10);
-      return NextResponse.json({ results: ranked.map(toResponse) });
+      return NextResponse.json(
+        { results: ranked.map(toResponse) },
+        { headers: cacheHeaders },
+      );
     }
 
     // L3: fetch from TMDB
@@ -121,7 +131,10 @@ export async function GET(request: Request) {
     // Re-rank results using smart ranking (top-K selection for k=10)
     const ranked = rankResults(deduped, searchTitle, year, 10);
 
-    return NextResponse.json({ results: ranked.map(toResponse) });
+    return NextResponse.json(
+      { results: ranked.map(toResponse) },
+      { headers: cacheHeaders },
+    );
   } catch (err) {
     if (isAbortError(err)) {
       return new Response(null, { status: 499 });

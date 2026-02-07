@@ -34,7 +34,16 @@ export async function GET(request: Request) {
     );
     switch (result.status) {
       case "found":
-        return NextResponse.json({ summary: result.summary }, { status: 200 });
+        return NextResponse.json(
+          { summary: result.summary },
+          {
+            status: 200,
+            headers: {
+              "Cache-Control":
+                "public, s-maxage=86400, stale-while-revalidate=86400",
+            },
+          },
+        );
       case "not_found":
         return NextResponse.json(
           { error: "Summary unavailable" },
