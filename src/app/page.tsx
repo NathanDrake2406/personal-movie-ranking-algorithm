@@ -3,12 +3,16 @@
 import {
   useState,
   useRef,
+  useEffect,
   memo,
   useReducer,
   useMemo,
   useCallback,
+  Suspense,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
+import { NavTabs } from "./NavTabs";
 import { Poster } from "./Poster";
 import { SearchCombobox } from "./SearchCombobox";
 import { SourceIcon } from "./SourceIcon";
@@ -286,11 +290,13 @@ const ConsensusSection = memo(function ConsensusSection({
   );
 });
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams();
   const [resetKey, setResetKey] = useState(0);
   const [fetchState, dispatch] = useReducer(fetchReducer, { status: "idle" });
   const [lastTmdbId, setLastTmdbId] = useState<number | null>(null);
   const scoreAbortController = useRef<AbortController | null>(null);
+  const deepLinkHandled = useRef(false);
 
   // Derived state from fetchState
   const loading = fetchState.status === "loading";
@@ -320,6 +326,19 @@ export default function Home() {
       dispatch({ type: "FETCH_ERROR", error: (err as Error).message });
     }
   }, []); // dispatch and setLastTmdbId are stable; scoreAbortController is a ref
+
+  // Deep-link: auto-fetch when ?tmdbId= is present (e.g., from /top page)
+  useEffect(() => {
+    if (deepLinkHandled.current) return;
+    const tmdbIdParam = searchParams.get("tmdbId");
+    if (tmdbIdParam) {
+      const tmdbId = Number(tmdbIdParam);
+      if (Number.isInteger(tmdbId) && tmdbId > 0) {
+        deepLinkHandled.current = true;
+        fetchScores(tmdbId);
+      }
+    }
+  }, [searchParams, fetchScores]);
 
   const handleReset = () => {
     setResetKey((k) => k + 1);
@@ -396,6 +415,7 @@ export default function Home() {
         <p className={styles.mastheadTitle} onClick={handleReset}>
           The Film Index
         </p>
+        <NavTabs />
       </header>
 
       <section className={styles.hero}>
@@ -537,5 +557,13 @@ export default function Home() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }

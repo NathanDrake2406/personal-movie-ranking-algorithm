@@ -16,6 +16,24 @@ vi.mock("./page.module.css", () => ({
   default: new Proxy({}, { get: (_, prop) => prop }),
 }));
 
+vi.mock("./NavTabs.module.css", () => ({
+  default: new Proxy({}, { get: (_, prop) => prop }),
+}));
+
+// Mock next/navigation hooks used by NavTabs and HomeContent
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/"),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+}));
+
+// Mock next/link as a simple anchor for jsdom tests
+vi.mock("next/link", () => ({
+  default: ({ children, href, ...rest }: Record<string, unknown>) => {
+    const { createElement } = require("react");
+    return createElement("a", { href, ...rest }, children);
+  },
+}));
+
 // Mock scrollIntoView (not available in jsdom)
 Element.prototype.scrollIntoView = vi.fn();
 
