@@ -4,6 +4,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import styles from "./top.module.css";
 
+const sortOptions = [
+  { value: "top", label: "Highest Rated" },
+  { value: "divisive", label: "Most Divisive" },
+] as const;
+
 const limitOptions = [
   { value: "10", label: "Top 10" },
   { value: "20", label: "Top 20" },
@@ -22,13 +27,18 @@ export function TopFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const currentSort = searchParams.get("sort") ?? "top";
   const currentLimit = searchParams.get("limit") ?? "10";
   const currentSources = searchParams.get("sources") ?? "";
 
   const updateParams = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value === "" || (key === "limit" && value === "10")) {
+      if (
+        value === "" ||
+        (key === "limit" && value === "10") ||
+        (key === "sort" && value === "top")
+      ) {
         params.delete(key);
       } else {
         params.set(key, value);
@@ -41,6 +51,17 @@ export function TopFilters() {
 
   return (
     <div className={styles.filters}>
+      <select
+        className={styles.filterSelect}
+        value={currentSort}
+        onChange={(e) => updateParams("sort", e.target.value)}
+      >
+        {sortOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
       <select
         className={styles.filterSelect}
         value={currentLimit}

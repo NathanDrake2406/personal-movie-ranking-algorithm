@@ -1,4 +1,4 @@
-import { desc, and, gte, isNotNull, eq } from "drizzle-orm";
+import { desc, and, gte, isNotNull, eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { movies } from "./schema";
 import { CURRENT_SCORE_VERSION } from "./persist";
@@ -9,6 +9,8 @@ import { kvTopGet, kvTopSet } from "./queries-kv";
 // L1: In-memory LRU — 5 min TTL, up to 20 filter combos
 const topMoviesCache = new LRUCache<readonly TopMovie[]>(5 * 60 * 1000, 20);
 
+export type TopSort = "top" | "divisive";
+
 export type TopMovie = {
   readonly imdbId: string;
   readonly tmdbId: number | null;
@@ -17,6 +19,7 @@ export type TopMovie = {
   readonly poster: string | null;
   readonly director: string | null;
   readonly overallScore: number;
+  readonly disagreement: number | null;
   readonly coverage: number;
   readonly sourcesCount: number;
 };
@@ -24,20 +27,25 @@ export type TopMovie = {
 export type TopMoviesOptions = {
   readonly limit?: number;
   readonly minSources?: number;
+  readonly sort?: TopSort;
 };
 
-function cacheKey(limit: number, minSources: number | undefined): string {
-  return `${limit}:${minSources ?? ""}`;
+function cacheKey(
+  sort: TopSort,
+  limit: number,
+  minSources: number | undefined,
+): string {
+  return `${sort}:${limit}:${minSources ?? ""}`;
 }
 
 export async function getTopMovies(
   options: TopMoviesOptions = {},
 ): Promise<readonly TopMovie[]> {
-  const { limit = 10, minSources } = options;
+  const { limit = 10, minSources, sort = "top" } = options;
   const db = getDb();
   if (!db) return [];
 
-  const key = cacheKey(limit, minSources);
+  const key = cacheKey(sort, limit, minSources);
 
   // L1: In-memory
   const l1 = topMoviesCache.get(key);
@@ -65,6 +73,17 @@ export async function getTopMovies(
     conditions.push(gte(movies.sourcesCount, minSources));
   }
 
+  if (sort === "divisive") {
+    conditions.push(isNotNull(movies.disagreement));
+    conditions.push(gte(movies.overallScore, 50));
+  }
+
+  // Quality-weighted disagreement: penalise films below the 70-point prior
+  // so mediocre films with noisy scores don't dominate genuinely polarising ones.
+  const weightedDisagreement = desc(
+    sql`${movies.disagreement} * least(${movies.overallScore} / 70.0, 1.0)`,
+  );
+
   const rows = await db
     .select({
       imdbId: movies.imdbId,
@@ -74,12 +93,15 @@ export async function getTopMovies(
       poster: movies.poster,
       director: movies.director,
       overallScore: movies.overallScore,
+      disagreement: movies.disagreement,
       coverage: movies.coverage,
       sourcesCount: movies.sourcesCount,
     })
     .from(movies)
     .where(and(...conditions))
-    .orderBy(desc(movies.overallScore))
+    .orderBy(
+      sort === "divisive" ? weightedDisagreement : desc(movies.overallScore),
+    )
     .limit(limit);
 
   // Cast is safe: the WHERE clause guarantees overallScore and coverage are non-null

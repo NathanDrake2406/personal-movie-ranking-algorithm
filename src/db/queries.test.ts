@@ -34,6 +34,7 @@ describe("getTopMovies", () => {
         poster: "https://image.tmdb.org/poster.jpg",
         director: "Frank Darabont",
         overallScore: 92.5,
+        disagreement: 8.3,
         coverage: 0.89,
         sourcesCount: 8,
       },
@@ -81,5 +82,22 @@ describe("getTopMovies", () => {
     expect(mockLimit).toHaveBeenCalledWith(20);
     // where() was called (verifying it doesn't throw with extra conditions)
     expect(mockWhere).toHaveBeenCalled();
+  });
+
+  it("uses divisive sort when sort option is provided", async () => {
+    const mockLimit = vi.fn().mockResolvedValue([]);
+    const mockOrderBy = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockSelect = vi.fn().mockReturnValue({ from: mockFrom });
+
+    vi.mocked(getDb).mockReturnValue({ select: mockSelect } as never);
+
+    await getTopMovies({ sort: "divisive" });
+
+    expect(mockSelect).toHaveBeenCalled();
+    expect(mockWhere).toHaveBeenCalled();
+    expect(mockOrderBy).toHaveBeenCalled();
+    expect(mockLimit).toHaveBeenCalledWith(10);
   });
 });

@@ -224,11 +224,19 @@ export function computeOverallScore(
   // Coverage: count-based (presentSources / 9)
   const coverage = sourceMap.size / WEIGHTED_SOURCE_KEYS.size;
 
-  // Disagreement: unweighted std dev of raw normalized scores (not shrunk)
-  const rawScores = [...sourceMap.values()].map((s) => s.normalized);
-  const mean = rawScores.reduce((sum, v) => sum + v, 0) / rawScores.length;
+  // Disagreement: std dev of normalized scores (with shrinkage applied,
+  // consistent with the scoring algorithm — low-sample sources are pulled
+  // toward the prior so they don't artificially inflate the spread)
+  const effectiveScores = [...sourceMap.values()].map((s) =>
+    SHRINKAGE_SOURCES.has(s.source)
+      ? applyShrinkage(s.source, s.normalized, s.count)
+      : s.normalized,
+  );
+  const mean =
+    effectiveScores.reduce((sum, v) => sum + v, 0) / effectiveScores.length;
   const variance =
-    rawScores.reduce((sum, v) => sum + (v - mean) ** 2, 0) / rawScores.length;
+    effectiveScores.reduce((sum, v) => sum + (v - mean) ** 2, 0) /
+    effectiveScores.length;
   const disagreement = Math.sqrt(variance);
 
   return { score: finalScore, coverage, disagreement };

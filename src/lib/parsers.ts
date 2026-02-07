@@ -105,19 +105,34 @@ export function parseMetacriticBadge(html: string): string | null {
 }
 
 export function parseMetacriticHtml(html: string): ParsedRating {
-  // Try new HTML format first
-  const valueMatch = html.match(/title="Metascore (\d+) out of 100"/);
+  // Find the main score element by anchoring to the product score info container.
+  // Metacritic pages include carousel cards with title="Metascore N out of 100"
+  // for OTHER movies — an unanchored regex would match those instead of the
+  // actual (possibly TBD) score.  Two-step: find the first title="Metascore ..."
+  // after the anchor, then check if it contains a numeric score.
+  let value: number | null = null;
+  const anchorIdx = html.indexOf("c-productScoreInfo_scoreNumber");
+  if (anchorIdx !== -1) {
+    const firstTitle = html
+      .slice(anchorIdx)
+      .match(/title="Metascore ([^"]+)"/);
+    const scoreMatch = firstTitle?.[1]?.match(/^(\d+) out of 100$/);
+    if (scoreMatch) {
+      value = Number(scoreMatch[1]);
+    }
+  }
+
   const countMatch = html.match(/Based on (\d+) Critic/);
 
-  // Fallback to legacy JSON-LD format
-  const legacyValueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
-  const legacyCountMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
+  // Fallback to legacy JSON-LD format (older Metacritic pages)
+  if (value == null) {
+    const legacyValueMatch = html.match(/"ratingValue"\s*:\s*(\d+)/);
+    if (legacyValueMatch?.[1]) {
+      value = Number(legacyValueMatch[1]);
+    }
+  }
 
-  const value = valueMatch?.[1]
-    ? Number(valueMatch[1])
-    : legacyValueMatch?.[1]
-      ? Number(legacyValueMatch[1])
-      : null;
+  const legacyCountMatch = html.match(/"reviewCount"\s*:\s*(\d+)/);
 
   const count = countMatch?.[1]
     ? parseInt(countMatch[1], 10)
@@ -247,10 +262,25 @@ export function parseRTCriticsHtml(html: string): ParsedRTCritics {
     badge = "rotten";
   }
 
+  const criticsAvgAll = matchAll?.[1] ? Number(matchAll[1]) * 10 : null;
+  let criticsAvgTop = matchTop?.[1] ? Number(matchTop[1]) * 10 : null;
+
+  // RT sometimes returns bogus averageRating for top critics (e.g., "10.00" for
+  // films with universally negative top-critic reviews). Cross-validate against
+  // the all-critics average: a >35-point gap is implausible and means the value
+  // is a placeholder or calculation error on RT's side.
+  if (
+    criticsAvgTop != null &&
+    criticsAvgAll != null &&
+    criticsAvgTop - criticsAvgAll > 35
+  ) {
+    criticsAvgTop = null;
+  }
+
   return {
     tomatometer: matchScore?.[1] ? Number(matchScore[1]) : null,
-    criticsAvgAll: matchAll?.[1] ? Number(matchAll[1]) * 10 : null,
-    criticsAvgTop: matchTop?.[1] ? Number(matchTop[1]) * 10 : null,
+    criticsAvgAll,
+    criticsAvgTop,
     allCriticsCount: matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null,
     topCriticsCount: matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null,
     badge,

@@ -137,7 +137,8 @@ describe("parsers", () => {
 
   describe("parseMetacriticHtml", () => {
     it("extracts score from new HTML format", () => {
-      const html = 'title="Metascore 85 out of 100"  Based on 42 Critic';
+      const html =
+        'c-productScoreInfo_scoreNumber"><div title="Metascore 85 out of 100"> Based on 42 Critic';
       const result = parseMetacriticHtml(html);
       expect(result.value).toBe(85);
       expect(result.count).toBe(42);
@@ -152,10 +153,22 @@ describe("parsers", () => {
 
     it("prefers new format over legacy", () => {
       const html =
-        'title="Metascore 90 out of 100" "ratingValue": 85 Based on 50 Critic "reviewCount": 40';
+        'c-productScoreInfo_scoreNumber"><div title="Metascore 90 out of 100"> "ratingValue": 85 Based on 50 Critic "reviewCount": 40';
       const result = parseMetacriticHtml(html);
       expect(result.value).toBe(90);
       expect(result.count).toBe(50);
+    });
+
+    it("ignores carousel card scores when actual score is TBD", () => {
+      // Metacritic pages include carousel cards with title="Metascore N out of 100"
+      // for other movies — must not match those when the actual score is TBD
+      const html = [
+        'c-productScoreInfo_scoreNumber"><div title="Metascore TBD">',
+        '<div class="c-globalProductCard_score"><div title="Metascore 100 out of 100">',
+        '<div class="c-globalProductCard_score"><div title="Metascore 99 out of 100">',
+      ].join(" ");
+      const result = parseMetacriticHtml(html);
+      expect(result.value).toBeNull();
     });
   });
 
@@ -285,6 +298,26 @@ describe("parsers", () => {
       const result = parseRTCriticsHtml(html);
       expect(result.tomatometer).toBeNull();
       expect(result.criticsAvgAll).toBeNull();
+    });
+
+    it("discards bogus top critics average that wildly exceeds all critics", () => {
+      // RT sometimes returns "10.00" averageRating for top critics on poorly
+      // rated films (e.g., The Room: 14% top Tomatometer, "10.00" avg)
+      const html =
+        '"criticsAll":{"score":"24","averageRating":"3.40","ratingCount":33},"criticsTop":{"averageRating":"10.00","ratingCount":7}';
+      const result = parseRTCriticsHtml(html);
+      expect(result.criticsAvgAll).toBeCloseTo(34);
+      expect(result.criticsAvgTop).toBeNull();
+      expect(result.topCriticsCount).toBe(7);
+    });
+
+    it("keeps top critics average when gap with all critics is reasonable", () => {
+      // Top critics rate slightly higher — normal and expected
+      const html =
+        '"criticsAll":{"score":"85","averageRating":"7.0","ratingCount":200},"criticsTop":{"averageRating":"8.5","ratingCount":40}';
+      const result = parseRTCriticsHtml(html);
+      expect(result.criticsAvgAll).toBeCloseTo(70);
+      expect(result.criticsAvgTop).toBeCloseTo(85);
     });
   });
 

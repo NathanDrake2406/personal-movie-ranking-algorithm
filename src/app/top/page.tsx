@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getTopMovies } from "@/db/queries";
+import { getTopMovies, type TopSort } from "@/db/queries";
 import { NavTabs } from "../NavTabs";
 import { PosterThumbnail } from "./PosterThumbnail";
 import { TopFilters } from "./TopFilters";
@@ -9,12 +9,16 @@ import styles from "./top.module.css";
 
 export const revalidate = 3600;
 
-type SearchParams = Promise<{ limit?: string; sources?: string }>;
+type SearchParams = Promise<{ limit?: string; sources?: string; sort?: string }>;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
   if (value == null) return fallback;
   const n = Number(value);
   return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
+function parseSort(value: string | undefined): TopSort {
+  return value === "divisive" ? "divisive" : "top";
 }
 
 export default async function TopPage({
@@ -23,25 +27,35 @@ export default async function TopPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const sort = parseSort(params.sort);
   const limit = parsePositiveInt(params.limit, 10);
   const minSources =
     params.sources != null && params.sources !== ""
       ? parsePositiveInt(params.sources, undefined as unknown as number)
       : undefined;
 
-  const movies = await getTopMovies({ limit, minSources });
+  const isDivisive = sort === "divisive";
+  const movies = await getTopMovies({ limit, minSources, sort });
 
-  const headlineLimit = `Top ${limit}`;
+  const headline = isDivisive ? `Most Divisive ${limit}` : `Top ${limit}`;
+  const subhead = isDivisive
+    ? "Films where critics and audiences disagree the most"
+    : "Highest-rated films scored so far";
 
-  // Dense ranking: movies with identical scores (to 1 d.p.) share the same rank
+  // Dense ranking: movies with identical primary scores (to 1 d.p.) share the same rank
+  type Movie = (typeof movies)[number];
+  const primaryScore = isDivisive
+    ? (m: Movie) => m.disagreement ?? 0
+    : (m: Movie) => m.overallScore;
+
   const ranks: number[] = [];
   for (let i = 0; i < movies.length; i++) {
     if (i === 0) {
       ranks.push(1);
     } else {
       const tied =
-        movies[i].overallScore.toFixed(1) ===
-        movies[i - 1].overallScore.toFixed(1);
+        primaryScore(movies[i]).toFixed(1) ===
+        primaryScore(movies[i - 1]).toFixed(1);
       ranks.push(tied ? ranks[i - 1] : i + 1);
     }
   }
@@ -56,8 +70,8 @@ export default async function TopPage({
       </header>
 
       <section className={styles.hero}>
-        <h1 className={styles.headline}>{headlineLimit}</h1>
-        <p className={styles.subhead}>Highest-rated films scored so far</p>
+        <h1 className={styles.headline}>{headline}</h1>
+        <p className={styles.subhead}>{subhead}</p>
         <Suspense>
           <TopFilters />
         </Suspense>
@@ -88,9 +102,18 @@ export default async function TopPage({
                   <span className={styles.scoreValue}>
                     {movie.overallScore.toFixed(1)}
                   </span>
-                  <p className={styles.scoreSources}>
-                    {movie.sourcesCount}/9 sources
-                  </p>
+                  {isDivisive ? (
+                    <p className={styles.scoreDivisive}>
+                      <span className={styles.scoreDivisiveValue}>
+                        ±{(movie.disagreement ?? 0).toFixed(1)}
+                      </span>
+                      {" spread"}
+                    </p>
+                  ) : (
+                    <p className={styles.scoreSources}>
+                      {movie.sourcesCount}/9 sources
+                    </p>
+                  )}
                 </div>
               </Link>
             </li>
