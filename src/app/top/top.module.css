@@ -294,7 +294,25 @@
 /* Mobile */
 @media (max-width: 480px) {
   .hero {
-    padding: 40px 20px 24px;
+    padding: 40px 16px 24px;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    padding-left: 20px;
+  }
+
+  .filterSelect {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .filterSelect:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc(50% - 4px);
   }
 
   .list {
