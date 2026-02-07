@@ -104,7 +104,9 @@ export default async function TopPage({
       </section>
 
       {movies.length > 0 ? (
-        <ol className={styles.list}>
+        <ol
+          className={`${styles.list}${effectiveLimit >= 1000 ? ` ${styles.listWithEgg}` : ""}`}
+        >
           {movies.map((movie, i) => (
             <li key={movie.imdbId}>
               <Link
@@ -149,7 +151,17 @@ export default async function TopPage({
             </li>
           ))}
         </ol>
-      ) : (
+      ) : null}
+      {effectiveLimit >= 1000 && movies.length > 0 && (
+        <footer className={styles.easterEgg}>
+          <p className={styles.easterEggText}>
+            Can&rsquo;t believe you scrolled all the way down here.
+            <br />
+            Truly a film lover ❤️ You have my utmost respect.
+          </p>
+        </footer>
+      )}
+      {movies.length === 0 && (
         <div className={styles.empty}>
           <p className={styles.emptyText}>
             No films match these filters yet. Search for a movie to get started.
