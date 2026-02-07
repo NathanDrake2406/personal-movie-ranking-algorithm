@@ -54,17 +54,11 @@ export default async function TopPage({
         <ol className={styles.list}>
           {movies.map((movie, i) => (
             <li key={movie.imdbId}>
-              <Link
-                href={`/?tmdbId=${movie.tmdbId}`}
-                className={styles.row}
-              >
+              <Link href={`/?tmdbId=${movie.tmdbId}`} className={styles.row}>
                 <span className={styles.rank}>{i + 1}</span>
                 <div className={styles.posterThumbContainer}>
                   {movie.poster ? (
-                    <PosterThumbnail
-                      src={movie.poster}
-                      alt={movie.title}
-                    />
+                    <PosterThumbnail src={movie.poster} alt={movie.title} />
                   ) : (
                     <div className={styles.posterEmpty} />
                   )}
@@ -72,7 +66,9 @@ export default async function TopPage({
                 <div className={styles.info}>
                   <p className={styles.movieTitle}>{movie.title}</p>
                   <p className={styles.movieMeta}>
-                    {[movie.year, movie.director].filter(Boolean).join(" \u00b7 ")}
+                    {[movie.year, movie.director]
+                      .filter(Boolean)
+                      .join(" \u00b7 ")}
                   </p>
                 </div>
                 <div className={styles.scoreCol}>

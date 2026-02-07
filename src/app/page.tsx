@@ -57,7 +57,11 @@ const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
   return (
     <div className={styles.scoreCard}>
       <p className={styles.scoreSource}>
-        <SourceIcon source={score.source} size={28} className={styles.sourceIcon} />
+        <SourceIcon
+          source={score.source}
+          size={24}
+          className={styles.sourceIcon}
+        />
         {score.label}
       </p>
       <p className={styles.scoreValue}>{formatScore(score.normalized)}</p>
@@ -109,7 +113,7 @@ const AllocineScoreCard = memo(function AllocineScoreCard({
   return (
     <div className={`${styles.scoreCard} ${styles.rtCard}`}>
       <p className={styles.scoreSource}>
-        <SourceIcon source="allocine" size={28} className={styles.sourceIcon} />
+        <SourceIcon source="allocine" size={24} className={styles.sourceIcon} />
         AlloCiné
       </p>
 
@@ -165,7 +169,11 @@ const RTScoreCard = memo(function RTScoreCard({
   return (
     <div className={`${styles.scoreCard} ${styles.rtCard}`}>
       <p className={styles.scoreSource}>
-        <SourceIcon source="rotten_tomatoes" size={28} className={styles.sourceIcon} />
+        <SourceIcon
+          source="rotten_tomatoes"
+          size={24}
+          className={styles.sourceIcon}
+        />
         Rotten Tomatoes
       </p>
 

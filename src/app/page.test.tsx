@@ -27,12 +27,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock next/link as a simple anchor for jsdom tests
-vi.mock("next/link", () => ({
-  default: ({ children, href, ...rest }: Record<string, unknown>) => {
-    const { createElement } = require("react");
-    return createElement("a", { href, ...rest }, children);
-  },
-}));
+vi.mock("next/link", () => {
+  const React = require("react"); // eslint-disable-line @typescript-eslint/no-require-imports
+  return {
+    default: ({ children, href, ...rest }: Record<string, unknown>) =>
+      React.createElement("a", { href, ...rest }, children),
+  };
+});
 
 // Mock scrollIntoView (not available in jsdom)
 Element.prototype.scrollIntoView = vi.fn();
