@@ -22,6 +22,7 @@ export type SourceScore = {
   url?: string;
   error?: string;
   fromFallback?: boolean;
+  badge?: string;
 };
 
 export type MovieInfo = {

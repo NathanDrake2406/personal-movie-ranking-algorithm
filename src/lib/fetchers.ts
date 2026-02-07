@@ -16,6 +16,7 @@ import {
   parseImdbHtml,
   parseLetterboxdHtml,
   parseMetacriticHtml,
+  parseMetacriticBadge,
   parseDoubanSubjectSearchHtml,
   parseDoubanGlobalSearchHtml,
   parseGoogleDoubanSearchHtml,
@@ -254,6 +255,7 @@ async function fetchRottenTomatoes(
     let allCriticsCount: number | null = null;
     let topCriticsCount: number | null = null;
     let consensus: RTConsensus = {};
+    let badge: string | undefined = undefined;
 
     // If percentage missing, fall back to average rating scraped from HTML
     if (value == null) {
@@ -266,6 +268,7 @@ async function fetchRottenTomatoes(
       avgTop = criticsParsed.criticsAvgTop;
       allCriticsCount = criticsParsed.allCriticsCount;
       topCriticsCount = criticsParsed.topCriticsCount;
+      badge = criticsParsed.badge ?? undefined;
       consensus = parseRTConsensus(html);
       if (avgAll != null) value = avgAll;
     }
@@ -280,6 +283,7 @@ async function fetchRottenTomatoes(
         raw: { value, scale: "0-100" },
         count: allCriticsCount,
         url: `https://www.rottentomatoes.com/m/${slug}`,
+        badge,
       }),
     );
 
@@ -327,6 +331,7 @@ async function fetchRottenTomatoes(
         criticsAvgTop: avgTop,
         allCriticsCount,
         topCriticsCount,
+        badge: rtBadge,
       } = criticsParsed;
       const { audienceAvg, isVerifiedAudience, audienceCount } = audienceParsed;
 
@@ -347,6 +352,7 @@ async function fetchRottenTomatoes(
               raw: { value: tomatometer, scale: "0-100" },
               count: allCriticsCount,
               url: `https://www.rottentomatoes.com/m/${slug}`,
+              badge: rtBadge ?? undefined,
             }),
           );
         }
@@ -431,7 +437,11 @@ async function fetchRottenTomatoes(
 async function scrapeMetacritic(
   slug: string,
   signal?: AbortSignal,
-): Promise<{ value: number | null; count: number | null } | null> {
+): Promise<{
+  value: number | null;
+  count: number | null;
+  badge?: string;
+} | null> {
   try {
     const html = await fetchText(`https://www.metacritic.com/movie/${slug}/`, {
       headers: { accept: "text/html", "user-agent": BROWSER_UA },
@@ -439,7 +449,12 @@ async function scrapeMetacritic(
     });
     const parsed = parseMetacriticHtml(html);
     if (parsed.value != null) {
-      return { value: parsed.value, count: parsed.count };
+      const badge = parseMetacriticBadge(html);
+      return {
+        value: parsed.value,
+        count: parsed.count,
+        badge: badge ?? undefined,
+      };
     }
     return null; // Page loaded but no score found
   } catch {
@@ -487,7 +502,11 @@ async function fetchMetacritic(
 
   // --- Layer 1: Direct Metacritic scrape (requires slug) ---
   if (slug) {
-    let result: { value: number | null; count: number | null } | null = null;
+    let result: {
+      value: number | null;
+      count: number | null;
+      badge?: string;
+    } | null = null;
     let usedSlug = slug;
 
     if (ctx.movie.year) {
@@ -514,6 +533,7 @@ async function fetchMetacritic(
         raw: { value: result.value, scale: "0-100" },
         count: result.count,
         url: `https://www.metacritic.com/movie/${usedSlug}`,
+        badge: result.badge,
       });
     }
   }

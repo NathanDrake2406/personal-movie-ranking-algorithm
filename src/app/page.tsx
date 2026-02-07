@@ -49,6 +49,13 @@ function formatScore(val: number | null) {
   return val == null ? "—" : Math.round(val).toString();
 }
 
+const BADGE_LABELS: Record<string, string> = {
+  certified_fresh: "Certified Fresh",
+  fresh: "Fresh",
+  rotten: "Rotten",
+  must_see: "Must-See",
+};
+
 const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
   return (
     <div className={styles.scoreCard}>
@@ -60,6 +67,11 @@ const ScoreCard = memo(function ScoreCard({ score }: { score: SourceScore }) {
       {score.raw?.value != null ? (
         <p className={styles.scoreRaw}>
           {score.raw.value} out of {score.raw.scale.split("-")[1]}
+        </p>
+      ) : null}
+      {score.badge ? (
+        <p className={`${styles.badge} ${styles[`badge_${score.badge}`] ?? ""}`}>
+          {BADGE_LABELS[score.badge] ?? score.badge}
         </p>
       ) : null}
       {score.fromFallback ? (
@@ -177,6 +189,11 @@ const RTScoreCard = memo(function RTScoreCard({
             </span>
           ) : null}
           <span className={styles.rtMainLabel}>Critics</span>
+          {rtMain?.badge ? (
+            <span className={`${styles.badge} ${styles[`badge_${rtMain.badge}`] ?? ""}`}>
+              {BADGE_LABELS[rtMain.badge] ?? rtMain.badge}
+            </span>
+          ) : null}
         </div>
         <div className={styles.rtMainScore}>
           <span className={styles.rtMainValue}>

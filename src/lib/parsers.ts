@@ -98,6 +98,12 @@ export function parseImdbHtml(html: string): ParsedRating {
   return { value: Number.isFinite(value) ? value : null, count };
 }
 
+export function parseMetacriticBadge(html: string): string | null {
+  // Metacritic "Must-See" badge appears in badge/label elements
+  if (/>\s*Must[- ]?See\s*</i.test(html)) return "must_see";
+  return null;
+}
+
 export function parseMetacriticHtml(html: string): ParsedRating {
   // Try new HTML format first
   const valueMatch = html.match(/title="Metascore (\d+) out of 100"/);
@@ -206,6 +212,7 @@ export type ParsedRTCritics = {
   criticsAvgTop: number | null;
   allCriticsCount: number | null;
   topCriticsCount: number | null;
+  badge: "certified_fresh" | "fresh" | "rotten" | null;
 };
 
 export function parseRTCriticsHtml(html: string): ParsedRTCritics {
@@ -223,12 +230,30 @@ export function parseRTCriticsHtml(html: string): ParsedRTCritics {
     /"criticsTop"[^}]*"ratingCount"\s*:\s*(\d+)/,
   );
 
+  // Extract badge from criticsScore section of embedded JSON
+  const certifiedMatch = html.match(
+    /"criticsScore"\s*:\s*\{[^}]*"certified"\s*:\s*(true|false)/,
+  );
+  const sentimentMatch = html.match(
+    /"criticsScore"\s*:\s*\{[^}]*"sentiment"\s*:\s*"([^"]+)"/,
+  );
+  const certified = certifiedMatch?.[1] === "true";
+  const sentiment = sentimentMatch?.[1]?.toUpperCase();
+
+  let badge: ParsedRTCritics["badge"] = null;
+  if (sentiment === "POSITIVE") {
+    badge = certified ? "certified_fresh" : "fresh";
+  } else if (sentiment === "NEGATIVE") {
+    badge = "rotten";
+  }
+
   return {
     tomatometer: matchScore?.[1] ? Number(matchScore[1]) : null,
     criticsAvgAll: matchAll?.[1] ? Number(matchAll[1]) * 10 : null,
     criticsAvgTop: matchTop?.[1] ? Number(matchTop[1]) * 10 : null,
     allCriticsCount: matchAllCount?.[1] ? parseInt(matchAllCount[1], 10) : null,
     topCriticsCount: matchTopCount?.[1] ? parseInt(matchTopCount[1], 10) : null,
+    badge,
   };
 }
 
