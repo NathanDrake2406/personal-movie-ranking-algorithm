@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: #0d0d0d;
   color: #e8e8e8;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
 }
 
 .masthead {
@@ -12,7 +12,7 @@
 }
 
 .mastheadTitle {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.2em;
@@ -36,7 +36,7 @@
 }
 
 .headline {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: clamp(28px, 6vw, 56px);
   font-weight: 900;
   line-height: 1.1;
@@ -85,7 +85,7 @@
 }
 
 .rank {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 24px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -128,7 +128,7 @@
 }
 
 .movieTitle {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 18px;
   font-weight: 600;
   color: #e8e8e8;
@@ -148,7 +148,7 @@
 }
 
 .scoreValue {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 28px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -196,7 +196,7 @@
   border: 1px solid #2a2a2a;
   border-radius: 0;
   color: #ccc;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 13px;
   cursor: pointer;
   appearance: none;
@@ -237,7 +237,7 @@
   padding: 12px 24px;
   border: 1px solid #333;
   color: #e8e8e8;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -261,7 +261,7 @@
 }
 
 .easterEggText {
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 14px;
   font-weight: 400;
   color: #666;

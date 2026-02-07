@@ -2,7 +2,7 @@
   min-height: 100vh;
   background: #0d0d0d;
   color: #e8e8e8;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
 }
 
 .masthead {
@@ -12,7 +12,7 @@
 }
 
 .mastheadTitle {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.2em;
@@ -36,7 +36,7 @@
 }
 
 .headline {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: clamp(28px, 7vw, 80px);
   font-weight: 900;
   line-height: 1.1;
@@ -64,7 +64,7 @@
   padding: 18px 20px;
   border: none;
   background: transparent;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 16px;
   color: #e8e8e8;
 }
@@ -88,7 +88,7 @@
   border-left: 1px solid #333;
   background: #e8e8e8;
   color: #0d0d0d;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -378,7 +378,7 @@
 }
 
 .dropdownTitle {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 20px;
   font-weight: 600;
   color: #e8e8e8;
@@ -465,7 +465,7 @@
   border: 1px solid #555;
   background: transparent;
   color: #e8e8e8;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.05em;
@@ -521,7 +521,7 @@
   flex-direction: column;
   gap: 2px;
   margin: 0;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 14px;
   line-height: 1.5;
 }
@@ -626,7 +626,7 @@
 }
 
 .movieTitle {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: clamp(32px, 5vw, 56px);
   font-weight: 700;
   line-height: 1.1;
@@ -640,7 +640,7 @@
 }
 
 .movieMeta {
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 16px;
   font-weight: 500;
   color: #666;
@@ -650,7 +650,7 @@
 }
 
 .movieOverview {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 20px;
   font-weight: 400;
   color: #aaa;
@@ -660,7 +660,7 @@
 }
 
 .movieCredits {
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 14px;
   font-weight: 400;
   color: #666;
@@ -696,7 +696,7 @@
 }
 
 .verdictScore {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 56px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -709,7 +709,7 @@
 
 /* Score Cards Grid */
 .scoresTitle {
-  font-family: "source serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 26px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -798,7 +798,7 @@
 }
 
 .scoreSource {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 24px;
   font-weight: 600;
   color: #e8e8e8;
@@ -813,7 +813,7 @@
 }
 
 .scoreValue {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 56px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -870,7 +870,7 @@
 }
 
 .rtMainValue {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 56px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -889,7 +889,7 @@
 
 .rtMainScale {
   display: block;
-  font-family: "DM Sans", sans-serif;
+  font-family: var(--font-dm-sans), sans-serif;
   font-size: 13px;
   color: #777;
   margin: 0;
@@ -920,7 +920,7 @@
 }
 
 .rtSubValue {
-  font-family: "Source Serif 4", serif;
+  font-family: var(--font-source-serif), serif;
   font-size: 28px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { getTopMovies, type TopSort } from "@/db/queries";
@@ -9,6 +10,13 @@ import { GENRES, type Genre } from "./genres";
 import styles from "./top.module.css";
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: "Best 1000 Films of All Time | The Film Index",
+  description:
+    "Ranked list of the highest-rated films scored by The Film Index, aggregating IMDb, Rotten Tomatoes, Metacritic, Letterboxd, Douban, and AlloCiné.",
+  alternates: { canonical: "/top" },
+};
 
 type SearchParams = Promise<{
   limit?: string;
@@ -86,8 +94,25 @@ export default async function TopPage({
     }
   }
 
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: headline,
+    description: subhead,
+    numberOfItems: movies.length,
+    itemListElement: movies.slice(0, 10).map((movie, i) => ({
+      "@type": "ListItem",
+      position: ranks[i],
+      name: `${movie.title}${movie.year ? ` (${movie.year})` : ""}`,
+    })),
+  };
+
   return (
     <div className={styles.page}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
       <header className={styles.masthead}>
         <Link href="/" prefetch={false} className={styles.mastheadTitle}>
           The Film Index
