@@ -15,9 +15,9 @@ const dmSans = DM_Sans({
 });
 
 const title =
-  "Movie Ratings from IMDb, RT, Metacritic, Letterboxd, AlloCiné, Douban";
+  "Movie Ratings from IMDb, Rotten Tomatoes, Metacritic & More";
 const description =
-  "Bayesian movie scoring algorithm aggregating IMDb, Letterboxd, RT, Metacritic, Douban & AlloCiné";
+  "Search any film and instantly compare ratings from IMDb, Rotten Tomatoes, Metacritic, Letterboxd, Douban, and AlloCiné — all aggregated into one score.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://moviesranking.com"),
@@ -71,7 +71,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {children}
+        <main>{children}</main>
         <Analytics />
         <SpeedInsights />
       </body>

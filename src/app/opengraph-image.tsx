@@ -53,7 +53,7 @@ export default function OGImage() {
               color: "transparent",
             }}
           >
-            Aggregated Movie Ratings
+            One Score from Six Platforms
           </div>
           <div
             style={{
@@ -65,6 +65,20 @@ export default function OGImage() {
             }}
           >
             IMDb · Rotten Tomatoes · Metacritic · Letterboxd · Douban · AlloCiné
+          </div>
+          <div
+            style={{
+              marginTop: "16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              fontSize: "22px",
+              fontWeight: 600,
+              color: "#e0a030",
+              letterSpacing: "0.02em",
+            }}
+          >
+            Search any movie →
           </div>
         </div>
         <div

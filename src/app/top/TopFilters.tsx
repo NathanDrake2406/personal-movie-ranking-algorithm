@@ -58,6 +58,7 @@ export function TopFilters() {
         className={styles.filterSelect}
         value={currentSort}
         onChange={(e) => updateParams("sort", e.target.value)}
+        aria-label="Sort order"
       >
         {sortOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -70,6 +71,7 @@ export function TopFilters() {
           className={styles.filterSelect}
           value={currentLimit}
           onChange={(e) => updateParams("limit", e.target.value)}
+          aria-label="Number of films"
         >
           {limitOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -82,6 +84,7 @@ export function TopFilters() {
         className={styles.filterSelect}
         value={currentGenre}
         onChange={(e) => updateParams("genre", e.target.value)}
+        aria-label="Genre"
       >
         <option value="">All Genres</option>
         {GENRES.map((g) => (
@@ -94,6 +97,7 @@ export function TopFilters() {
         className={styles.filterSelect}
         value={currentSources}
         onChange={(e) => updateParams("sources", e.target.value)}
+        aria-label="Minimum sources"
       >
         {sourceOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>
