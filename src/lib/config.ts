@@ -8,7 +8,10 @@ export type ApiKeys = {
 export function getApiKeys(env: Record<string, string | undefined>): ApiKeys {
   const raw = env.TMDB_API_KEY;
   const tmdbKeys = raw
-    ? raw.split(",").map((k) => k.trim()).filter(Boolean)
+    ? raw
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean)
     : [];
   const tmdbKey = tmdbKeys[0];
   const omdbKey = env.OMDB_API_KEY;
